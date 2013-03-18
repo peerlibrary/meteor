@@ -17,7 +17,7 @@
     }
   };
   Meteor.loggingIn = function () {
-    Deps.depend(loggingInDeps);
+    loggingInDeps.depend();
     return loggingIn;
   };
 
@@ -196,7 +196,7 @@
       return true;
 
     // not yet complete, save the context for invalidation once we are.
-    Deps.depend(loginServicesConfiguredDeps);
+    loginServicesConfiguredDeps.depend();
     return false;
   };
 })();
