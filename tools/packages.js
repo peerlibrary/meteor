@@ -136,6 +136,19 @@ var Package = function () {
           throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends'?");
         }
       }
+    },
+
+    resolve: function (name) {
+      var nodeModuleDir = path.join(self.source_root, '.npm', 'node_modules', name);
+      if (fs.existsSync(nodeModuleDir)) {
+        return require.resolve(nodeModuleDir);
+      } else {
+        try {
+          return require.resolve(name); // from the dev bundle
+        } catch (e) {
+          throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends'?");
+        }
+      }
     }
   };
 
