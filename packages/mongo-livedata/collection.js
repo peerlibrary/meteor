@@ -1,19 +1,23 @@
-// manager, if given, is a LivedataClient or LivedataServer
+// connection, if given, is a LivedataClient or LivedataServer
 // XXX presently there is no way to destroy/clean up a Collection
-
-(function () {
 
 Meteor.Collection = function (name, options) {
   var self = this;
+  if (! (self instanceof Meteor.Collection))
+    throw new Error('use "new" to construct a Meteor.Collection');
   if (options && options.methods) {
     // Backwards compatibility hack with original signature (which passed
-    // "manager" directly instead of in options. (Managers must have a "methods"
+    // "connection" directly instead of in options. (Connections must have a "methods"
     // method.)
     // XXX remove before 1.0
-    options = {manager: options};
+    options = {connection: options};
+  }
+  // Backwards compatibility: "connection" used to be called "manager".
+  if (options && options.manager && !options.connection) {
+    options.connection = options.manager;
   }
   options = _.extend({
-    manager: undefined,
+    connection: undefined,
     idGeneration: 'STRING',
     transform: null,
     _driver: undefined,
@@ -45,13 +49,13 @@ Meteor.Collection = function (name, options) {
                   "the collection name to turn off this warning.)");
   }
 
-  // note: nameless collections never have a manager
-  self._manager = name && (options.manager ||
+  // note: nameless collections never have a connection
+  self._connection = name && (options.connection ||
                            (Meteor.isClient ?
                             Meteor.default_connection : Meteor.default_server));
 
   if (!options._driver) {
-    if (name && self._manager === Meteor.default_server &&
+    if (name && self._connection === Meteor.default_server &&
         Meteor._RemoteCollectionDriver)
       options._driver = Meteor._RemoteCollectionDriver;
     else
@@ -61,11 +65,11 @@ Meteor.Collection = function (name, options) {
   self._collection = options._driver.open(name);
   self._name = name;
 
-  if (name && self._manager.registerStore) {
+  if (name && self._connection.registerStore) {
     // OK, we're going to be a slave, replicating some remote
     // database, except possibly with some temporary divergence while
     // we have unacknowledged RPC's.
-    var ok = self._manager.registerStore(name, {
+    var ok = self._connection.registerStore(name, {
       // Called at the beginning of a batch of updates. batchSize is the number
       // of update calls to expect.
       //
@@ -112,7 +116,6 @@ Meteor.Collection = function (name, options) {
           return;
         } else if (msg.msg === 'added') {
           if (doc) {
-            debugger;
             throw new Error("Expected not to find a document already present for an add");
           }
           self._collection.insert(_.extend({_id: mongoId}, msg.fields));
@@ -167,10 +170,10 @@ Meteor.Collection = function (name, options) {
 
   // autopublish
   if (!options._preventAutopublish &&
-      self._manager && self._manager.onAutopublish)
-    self._manager.onAutopublish(function () {
+      self._connection && self._connection.onAutopublish)
+    self._connection.onAutopublish(function () {
       var handler = function () { return self.find(); };
-      self._manager.publish(null, handler, {is_auto: true});
+      self._connection.publish(null, handler, {is_auto: true});
     });
 };
 
@@ -235,8 +238,6 @@ Meteor.Collection._rewriteSelector = function (selector) {
   var ret = {};
   _.each(selector, function (value, key) {
     if (value instanceof RegExp) {
-      // XXX should also do this translation at lower levels (eg if the outer
-      // level is $and/$or/$nor, or if there's an $elemMatch)
       ret[key] = {$regex: value.source};
       var regexOptions = '';
       // JS RegExp objects support 'i', 'm', and 'g'. Mongo regex $options
@@ -247,6 +248,12 @@ Meteor.Collection._rewriteSelector = function (selector) {
         regexOptions += 'm';
       if (regexOptions)
         ret[key].$options = regexOptions;
+    }
+    else if (_.contains(['$or','$and','$nor'], key)) {
+      // Translate lower levels of $and/$or/$nor
+      ret[key] = _.map(value, function (v) {
+        return Meteor.Collection._rewriteSelector(v);
+      });
     }
     else
       ret[key] = value;
@@ -325,7 +332,7 @@ _.each(["insert", "update", "remove"], function (name) {
       args[0] = Meteor.Collection._rewriteSelector(args[0]);
     }
 
-    if (self._manager && self._manager !== Meteor.default_server) {
+    if (self._connection && self._connection !== Meteor.default_server) {
       // just remote to another endpoint, propagate return value or
       // exception.
 
@@ -342,12 +349,12 @@ _.each(["insert", "update", "remove"], function (name) {
         // asynchronous: on success, callback should return ret
         // (document ID for insert, undefined for update and
         // remove), not the method's result.
-        self._manager.apply(self._prefix + name, args, function (error, result) {
+        self._connection.apply(self._prefix + name, args, function (error, result) {
           callback(error, !error && ret);
         });
       } else {
         // synchronous: propagate exception
-        self._manager.apply(self._prefix + name, args);
+        self._connection.apply(self._prefix + name, args);
       }
 
     } else {
@@ -363,7 +370,7 @@ _.each(["insert", "update", "remove"], function (name) {
         throw e;
       }
 
-      // on success, return *ret*, not the manager's return value.
+      // on success, return *ret*, not the connection's return value.
       callback && callback(null, ret);
     }
 
@@ -380,6 +387,12 @@ Meteor.Collection.prototype._ensureIndex = function (index, options) {
   if (!self._collection._ensureIndex)
     throw new Error("Can only call _ensureIndex on server collections");
   self._collection._ensureIndex(index, options);
+};
+Meteor.Collection.prototype._dropIndex = function (index) {
+  var self = this;
+  if (!self._collection._dropIndex)
+    throw new Error("Can only call _dropIndex on server collections");
+  self._collection._dropIndex(index);
 };
 
 Meteor.Collection.ObjectID = LocalCollection._ObjectID;
@@ -492,13 +505,16 @@ Meteor.Collection.prototype._defineMutationMethods = function() {
   self._prefix = '/' + self._name + '/';
 
   // mutation methods
-  if (self._manager) {
+  if (self._connection) {
     var m = {};
 
     _.each(['insert', 'update', 'remove'], function (method) {
       m[self._prefix + method] = function (/* ... */) {
+        // All the methods do their own validation, instead of using check().
+        check(arguments, [Match.Any]);
         try {
           if (this.isSimulation) {
+
             // In a client simulation, you can do any mutation (even with a
             // complex selector).
             self._collection[method].apply(
@@ -517,7 +533,7 @@ Meteor.Collection.prototype._defineMutationMethods = function() {
             if (self._validators[method].allow.length === 0) {
               throw new Meteor.Error(
                 403, "Access denied. No allow validators set on restricted " +
-                  "collection.");
+                  "collection for method '" + method + "'.");
             }
 
             var validatedMethodName =
@@ -542,7 +558,11 @@ Meteor.Collection.prototype._defineMutationMethods = function() {
         }
       };
     });
-    self._manager.methods(m);
+    // Minimongo on the server gets no stubs; instead, by default
+    // it wait()s until its result is ready, yielding.
+    // This matches the behavior of macromongo on the server better.
+    if (Meteor.isClient || self._connection === Meteor.default_server)
+      self._connection.methods(m);
   }
 };
 
@@ -618,6 +638,9 @@ Meteor.Collection.prototype._validatedUpdate = function(
     if (op.charAt(0) !== '$') {
       throw new Meteor.Error(
         403, "Access denied. In a restricted collection you can only update documents, not replace them. Use a Mongo update operator, such as '$set'.");
+    } else if (!_.has(ALLOWED_UPDATE_OPERATIONS, op)) {
+      throw new Meteor.Error(
+        403, "Access denied. Operator " + op + " not allowed in a restricted collection.");
     } else {
       _.each(_.keys(params), function (field) {
         // treat dotted fields as if they are replacing their
@@ -679,6 +702,17 @@ Meteor.Collection.prototype._validatedUpdate = function(
     self._collection, selector, mutator, options);
 };
 
+// Only allow these operations in validated updates. Specifically
+// whitelist operations, rather than blacklist, so new complex
+// operations that are added aren't automatically allowed. A complex
+// operation is one that does more than just modify its target
+// field. For now this contains all update operations except '$rename'.
+// http://docs.mongodb.org/manual/reference/operators/#update
+var ALLOWED_UPDATE_OPERATIONS = {
+  $inc:1, $set:1, $unset:1, $addToSet:1, $pop:1, $pullAll:1, $pull:1,
+  $pushAll:1, $push:1, $bit:1
+};
+
 // Simulate a mongo `remove` operation while validating access control
 // rules. See #ValidatedChange
 Meteor.Collection.prototype._validatedRemove = function(userId, selector) {
@@ -717,5 +751,3 @@ Meteor.Collection.prototype._validatedRemove = function(userId, selector) {
 
   self._collection.remove.call(self._collection, selector);
 };
-
-})();

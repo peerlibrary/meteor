@@ -1,5 +1,4 @@
 // XXX should check error codes
-(function () {
 var failure = function (test, code, reason) {
   return function (error, result) {
     test.equal(result, undefined);
@@ -22,6 +21,7 @@ var failure = function (test, code, reason) {
 
 Tinytest.add("livedata - Meteor.Error", function (test) {
   var error = new Meteor.Error(123, "kittens", "puppies");
+  test.instanceOf(error, Meteor.Error);
   test.instanceOf(error, Error);
   test.equal(error.error, 123);
   test.equal(error.reason, "kittens");
@@ -350,7 +350,7 @@ if (Meteor.isClient) {
 
       Meteor.subscribe("objectsWithUsers", expect(function() {
         expectMessages(1, 0, ["owned by none"]);
-        Meteor.apply("setUserId", [1], {wait: true}, afterFirstSetUserId);
+        Meteor.apply("setUserId", ["1"], {wait: true}, afterFirstSetUserId);
       }));
 
       var afterFirstSetUserId = expect(function() {
@@ -358,7 +358,7 @@ if (Meteor.isClient) {
           "owned by one - a",
           "owned by one/two - a",
           "owned by one/two - b"]);
-        Meteor.apply("setUserId", [2], {wait: true}, afterSecondSetUserId);
+        Meteor.apply("setUserId", ["2"], {wait: true}, afterSecondSetUserId);
       });
 
       var afterSecondSetUserId = expect(function() {
@@ -367,7 +367,7 @@ if (Meteor.isClient) {
           "owned by one/two - b",
           "owned by two - a",
           "owned by two - b"]);
-        Meteor.apply("setUserId", [2], {wait: true}, afterThirdSetUserId);
+        Meteor.apply("setUserId", ["2"], {wait: true}, afterThirdSetUserId);
       });
 
       var afterThirdSetUserId = expect(function() {
@@ -383,11 +383,11 @@ if (Meteor.isClient) {
     }, function(test, expect) {
       var key = Random.id();
       Meteor.subscribe("recordUserIdOnStop", key);
-      Meteor.apply("setUserId", [100], {wait: true}, expect(function () {}));
-      Meteor.apply("setUserId", [101], {wait: true}, expect(function () {}));
+      Meteor.apply("setUserId", ["100"], {wait: true}, expect(function () {}));
+      Meteor.apply("setUserId", ["101"], {wait: true}, expect(function () {}));
       Meteor.call("userIdWhenStopped", key, expect(function (err, result) {
         test.isFalse(err);
-        test.equal(result, 100);
+        test.equal(result, "100");
       }));
     }
   ]);
@@ -399,6 +399,74 @@ Tinytest.add("livedata - setUserId error when called from server", function(test
                "Can't call setUserId on a server initiated method call");
   }
 });
+
+
+if (Meteor.isServer) {
+  var pubHandles = {};
+};
+Meteor.methods({
+  "livedata/setup" : function (id) {
+    check(id, String);
+    if (Meteor.isServer) {
+      pubHandles[id] = {};
+      Meteor.publish("pub1"+id, function () {
+        pubHandles[id].pub1 = this;
+        this.ready();
+      });
+      Meteor.publish("pub2"+id, function () {
+        pubHandles[id].pub2 = this;
+        this.ready();
+      });
+
+    }
+  },
+  "livedata/pub1go" : function (id) {
+    check(id, String);
+    if (Meteor.isServer) {
+
+      pubHandles[id].pub1.added("MultiPubCollection" + id, "foo", {a: "aa"});
+      return 1;
+    }
+    return 0;
+  },
+  "livedata/pub2go" : function (id) {
+    check(id, String);
+    if (Meteor.isServer) {
+      pubHandles[id].pub2.added("MultiPubCollection" + id , "foo", {b: "bb"});
+      return 2;
+    }
+    return 0;
+  }
+});
+
+if (Meteor.isClient) {
+  (function () {
+    var MultiPub;
+    var id = Random.id();
+    testAsyncMulti("livedata - added from two different subs", [
+      function (test, expect) {
+        Meteor.call('livedata/setup', id, expect(function () {}));
+      },
+      function (test, expect) {
+        MultiPub = new Meteor.Collection("MultiPubCollection" + id);
+        var sub1 = Meteor.subscribe("pub1"+id, expect(function () {}));
+        var sub2 = Meteor.subscribe("pub2"+id, expect(function () {}));
+      },
+      function (test, expect) {
+        Meteor.call("livedata/pub1go", id, expect(function (err, res) {test.equal(res, 1);}));
+      },
+      function (test, expect) {
+        test.equal(MultiPub.findOne("foo"), {_id: "foo", a: "aa"});
+      },
+      function (test, expect) {
+        Meteor.call("livedata/pub2go", id, expect(function (err, res) {test.equal(res, 2);}));
+      },
+      function (test, expect) {
+        test.equal(MultiPub.findOne("foo"), {_id: "foo", a: "aa", b: "bb"});
+      }
+    ]);
+  })();
+};
 
 if (Meteor.isClient) {
   testAsyncMulti("livedata - overlapping universal subs", [
@@ -440,7 +508,7 @@ if (Meteor.isClient) {
     var conn = new Meteor._LivedataConnection('/',
                                               {reloadWithOutstanding: true});
     var collName = Random.id();
-    var coll = new Meteor.Collection(collName, {manager: conn});
+    var coll = new Meteor.Collection(collName, {connection: conn});
     var errorFromRerun;
     var gotErrorFromStopper = false;
     return [
@@ -533,6 +601,72 @@ if (Meteor.isClient) {
     ]);
 }
 
+
+if (Meteor.isServer) {
+  Meteor.methods({
+    "s2s": function (arg) {
+      check(arg, String);
+      return "s2s " + arg;
+    }
+  });
+}
+(function () {
+  testAsyncMulti("livedata - connect works from both client and server", [
+    function (test, expect) {
+      var self = this;
+      self.conn = Meteor.connect(Meteor.absoluteUrl());
+      pollUntil(expect, function () {
+        return self.conn.status().connected;
+      }, 10000);
+    },
+
+    function (test, expect) {
+      var self = this;
+      if (self.conn.status().connected) {
+        self.conn.call('s2s', 'foo', expect(function (err, res) {
+          if (err)
+            throw err;
+          test.equal(res, "s2s foo");
+        }));
+      }
+    }
+  ]);
+})();
+
+if (Meteor.isServer) {
+  (function () {
+    testAsyncMulti("livedata - method call on server blocks in a fiber way", [
+      function (test, expect) {
+        var self = this;
+        self.conn = Meteor.connect(Meteor.absoluteUrl());
+        pollUntil(expect, function () {
+          return self.conn.status().connected;
+        }, 10000);
+      },
+
+      function (test, expect) {
+        var self = this;
+        if (self.conn.status().connected) {
+          test.equal(self.conn.call('s2s', 'foo'), "s2s foo");
+        }
+      }
+    ]);
+  })();
+}
+
+(function () {
+  testAsyncMulti("livedata - connect fails to unknown place", [
+    function (test, expect) {
+      var self = this;
+      self.conn = Meteor.connect("example.com");
+      Meteor.setTimeout(expect(function () {
+        test.isFalse(self.conn.status().connected, "Not connected");
+      }), 500);
+    }
+  ]);
+})();
+
+
 // XXX some things to test in greater detail:
 // staying in simulation mode
 // time warp
@@ -548,4 +682,3 @@ if (Meteor.isClient) {
 // reconnection not resulting in method re-execution
 // reconnection tolerating all kinds of lost messages (including data)
 // [probably lots more]
-})();

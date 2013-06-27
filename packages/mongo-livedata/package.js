@@ -12,6 +12,8 @@ Package.describe({
   internal: true
 });
 
+Npm.depends({mongodb: "1.3.7"});
+
 Package.on_use(function (api) {
   api.use(['random', 'ejson', 'json', 'underscore', 'minimongo', 'logging', 'livedata'],
           ['client', 'server']);
@@ -26,7 +28,11 @@ Package.on_test(function (api) {
   api.use('mongo-livedata');
   api.use('tinytest');
   api.use('test-helpers');
+  // XXX test order dependency: the allow_tests "partial allow" test
+  // fails if it is run before mongo_livedata_tests.
   api.add_files('mongo_livedata_tests.js', ['client', 'server']);
   api.add_files('allow_tests.js', ['client', 'server']);
+  api.add_files('collection_tests.js', ['client', 'server']);
   api.add_files('observe_changes_tests.js', ['client', 'server']);
 });
+

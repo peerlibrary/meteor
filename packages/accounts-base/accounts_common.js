@@ -5,6 +5,15 @@ if (!Accounts._options) {
   Accounts._options = {};
 }
 
+// Set up config for the accounts system. Call this on both the client
+// and the server.
+//
+// XXX we should add some enforcement that this is called on both the
+// client and the server. Otherwise, a user can
+// 'forbidClientAccountCreation' only on the client and while it looks
+// like their app is secure, the server will still accept createUser
+// calls. https://github.com/meteor/meteor/issues/828
+//
 // @param options {Object} an object with fields:
 // - sendVerificationEmail {Boolean}
 //     Send email address verification emails to new users created from
@@ -39,24 +48,9 @@ Meteor.users = new Meteor.Collection("users", {_preventAutopublish: true});
 // There is an allow call in accounts_server that restricts this
 // collection.
 
-
-// Table containing documents with configuration options for each
-// login service
-Accounts.loginServiceConfiguration = new Meteor.Collection(
-  "meteor_accounts_loginServiceConfiguration", {_preventAutopublish: true});
-// Leave this collection open in insecure mode. In theory, someone could
-// hijack your oauth connect requests to a different endpoint or appId,
-// but you did ask for 'insecure'. The advantage is that it is much
-// easier to write a configuration wizard that works only in insecure
-// mode.
-
-
-// Thrown when trying to use a login service which is not configured
-Accounts.ConfigError = function(description) {
-  this.message = description;
-};
-Accounts.ConfigError.prototype = new Error();
-Accounts.ConfigError.prototype.name = 'Accounts.ConfigError';
+// loginServiceConfiguration and ConfigError are maintained for backwards compatibility
+Accounts.loginServiceConfiguration = ServiceConfiguration.configurations;
+Accounts.ConfigError = ServiceConfiguration.ConfigError;
 
 // Thrown when the user cancels the login process (eg, closes an oauth
 // popup, declines retina scan, etc)

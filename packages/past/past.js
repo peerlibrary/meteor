@@ -1,3 +1,9 @@
+// This file is used to set up aliases and methods to preserve backwards
+// compatibility on some deprecated methods.  Care should be taken when
+// adding aliases and methods that the target will not be undefined, as
+// the past package is loaded early.  In some cases, it may be best to
+// define the alias in the package it refers to.
+
 // Old under_score version of camelCase public API names.
 Meteor.is_client = Meteor.isClient;
 Meteor.is_server = Meteor.isServer;
@@ -14,6 +20,11 @@ Meteor.autosubscribe = Deps.autorun;
 // "new deps" back-compat
 Meteor.flush = Deps.flush;
 Meteor.autorun = Deps.autorun;
+
+// Deps API that briefly existed in 0.5.9
+Deps.depend = function (d) {
+  return d.depend();
+};
 
 // Instead of the "random" package with Random.id(), we used to have this
 // Meteor.uuid() implementing the RFC 4122 v4 UUID.

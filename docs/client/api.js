@@ -57,13 +57,26 @@ Template.api.absoluteUrl = {
 Template.api.settings = {
   id: "meteor_settings",
   name: "Meteor.settings",
-  locus: "Server and client",
+  locus: "Anywhere",
   descr: ["`Meteor.settings` contains any deployment-specific options that were " +
           "provided using the `--settings` option for `meteor run` or `meteor deploy`. " +
           "If you provide the `--settings` option, `Meteor.settings` will be the " +
           "JSON object in the file you specify.  Otherwise, `Meteor.settings` will " +
           "be an empty object. If the object contains a key named `public`, then " +
           "`Meteor.settings.public` will also be available on the client."]
+};
+
+Template.api.release = {
+  id: "meteor_release",
+  name: "Meteor.release",
+  locus: "Anywhere",
+  descr: ["`Meteor.release` is a string containing the name of the " +
+          "[release](#meteorupdate) with which the project was built (for " +
+          "example, `\"" +
+          // Put the current release in the docs as the example)
+          (Meteor.release ? Meteor.release : '0.6.0') +
+          "\"`). It is `undefined` if the project was built using a git " +
+          "checkout of Meteor."]
 };
 
 Template.api.ejsonParse = {
@@ -125,6 +138,13 @@ Template.api.ejsonNewBinary = {
   locus: "Anywhere",
   args: [ {name: "size", type: "Number", descr: "The number of bytes of binary data to allocate."} ],
   descr: ["Allocate a new buffer of binary data that EJSON can serialize."]
+},
+
+Template.api.ejsonIsBinary = {
+  id: "ejson_is_binary",
+  name: "EJSON.isBinary(x)",
+  locus: "Anywhere",
+  descr: ["Returns true if `x` is a buffer of binary data, as returned from [`EJSON.newBinary`](#ejson_new_binary)."]
 },
 
 Template.api.ejsonAddType = {
@@ -255,7 +275,7 @@ Template.api.subscription_error = {
   id: "publish_error",
   name: "<i>this</i>.error(error)",
   locus: "Server",
-  descr: ["Call inside the publish function.  Stops this client's subscription, triggering a call on the client to the `onError` callback passed to [`Meteor.subscribe`](#meteor_subscribe), if any. If `error` is not a [`Meteor.Error`](#meteor_error), it will be mapped to `Meteor.Error(500, \"Internal server error\")`."]
+  descr: ["Call inside the publish function.  Stops this client's subscription, triggering a call on the client to the `onError` callback passed to [`Meteor.subscribe`](#meteor_subscribe), if any. If `error` is not a [`Meteor.Error`](#meteor_error), it will be [sanitized](#meteor_error)."]
 };
 
 Template.api.subscription_stop = {
@@ -452,9 +472,9 @@ Template.api.meteor_collection = {
      descr: "The name of the collection.  If null, creates an unmanaged (unsynchronized) local collection."}
   ],
   options: [
-    {name: "manager",
+    {name: "connection",
      type: "Object",
-     descr: "The Meteor connection that will manage this collection, defaults to `Meteor` if null.  Unmanaged (`name` is null) collections cannot specify a manager."
+     descr: "The Meteor connection that will manage this collection, defaults to `Meteor` if null.  Unmanaged (`name` is null) collections cannot specify a connection."
     },
     {name: "idGeneration",
      type: "String",
@@ -812,18 +832,6 @@ Template.api.deps_afterflush = {
   ]
 };
 
-Template.api.deps_depend = {
-  id: "deps_depend",
-  name: "Deps.depend(dependency)",
-  locus: "Client",
-  descr: ["Declares that the current computation depends on `dependency`.  The current computation, if there is one, becomes a dependent of `dependency`, meaning it will be invalidated and rerun the next time `dependency` changes.", "Returns `true` if this results in `dependency` gaining a new dependent (or `false` if this relationship already exists or there is no current computation)."],
-  args: [
-    {name: "dependency",
-     type: "Deps.Dependency",
-     descr: "The dependency for this computation to depend on."}
-  ]
-};
-
 Template.api.computation_stop = {
   id: "computation_stop",
   name: "<em>computation</em>.stop()",
@@ -878,15 +886,15 @@ Template.api.dependency_changed = {
   descr: ["Invalidate all dependent computations immediately and remove them as dependents."]
 };
 
-Template.api.dependency_adddependent = {
-  id: "dependency_adddependent",
-  name: "<em>dependency</em>.addDependent(computation)",
+Template.api.dependency_depend = {
+  id: "dependency_depend",
+  name: "<em>dependency</em>.depend([fromComputation])",
   locus: "Client",
-  descr: ["Adds `computation` as a dependent of this Dependency, recording the fact that the computation depends on this Dependency.", "Returns true if the computation was not already a dependent of this Dependency."],
+  descr: ["Declares that the current computation (or `fromComputation` if given) depends on `dependency`.  The computation will be invalidated the next time `dependency` changes.", "If there is no current computation and `depend()` is called with no arguments, it does nothing and returns false.", "Returns true if the computation is a new dependent of `dependency` rather than an existing one."],
   args: [
-    {name: "computation",
+    {name: "fromComputation",
      type: "Deps.Computation",
-     descr: "The computation to add, or `null` to use the current computation (in which case there must be a current computation)."}
+     descr: "An optional computation declared to depend on `dependency` instead of the current computation."}
   ]
 };
 
@@ -1349,6 +1357,49 @@ Template.api.accounts_emailTemplates = {
 
 
 
+Template.api.check = {
+  id: "check",
+  name: "check(value, pattern)",
+  locus: "Anywhere",
+  descr: ["Checks that a value matches a [pattern](#matchpatterns). If the value does not match the pattern, throws a `Match.Error`."],
+  args: [
+    {
+      name: "value",
+      type: "Any",
+      descr: "The value to check"
+    },
+    {
+      name: "pattern",
+      type: "Match pattern",
+      descr: "The [pattern](#matchpatterns) to match `value` against"
+    }
+  ]
+};
+
+Template.api.match_test = {
+  id: "match_test",
+  name: "Match.test(value, pattern)",
+  locus: "Anywhere",
+  descr: ["Returns true if the value matches the [pattern](#matchpatterns)."],
+  args: [
+    {
+      name: "value",
+      type: "Any",
+      descr: "The value to check"
+    },
+    {
+      name: "pattern",
+      type: "Match pattern",
+      descr: "The [pattern](#matchpatterns) to match `value` against"
+    }
+  ]
+};
+
+Template.api.matchpatterns = {
+  id: "matchpatterns",
+  name: "Match patterns"
+};
+
 Template.api.setTimeout = {
   id: "meteor_settimeout",
   name: "Meteor.setTimeout(func, delay)",
@@ -1753,6 +1804,10 @@ Template.api.email_send = {
     {name: "html",
      type: "String",
      descr: rfc('mail body (HTML)')
+    },
+    {name: "headers",
+     type: "Object",
+     descr: rfc('custom headers (dictionary)')
     }
   ]
 };

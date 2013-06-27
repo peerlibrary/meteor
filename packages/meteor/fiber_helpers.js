@@ -1,8 +1,6 @@
-(function () {
-
-var path = __meteor_bootstrap__.require('path');
-var Fiber = __meteor_bootstrap__.require('fibers');
-var Future = __meteor_bootstrap__.require(path.join('fibers', 'future'));
+var path = Npm.require('path');
+var Fiber = Npm.require('fibers');
+var Future = Npm.require(path.join('fibers', 'future'));
 
 Meteor._noYieldsAllowed = function (f) {
   // "Fiber" and "yield" are both in the global namespace. The yield function is
@@ -54,6 +52,11 @@ Meteor._SynchronousQueue = function () {
   // that task. We use this to throw an error rather than deadlocking if the
   // user calls runTask from within a task on the same fiber.
   self._currentTaskFiber = undefined;
+  // This is true if we're currently draining.  While we're draining, a further
+  // drain is a noop, to prevent infinite loops.  "drain" is a heuristic type
+  // operation, that has a meaning like unto "what a naive person would expect
+  // when modifying a table from an observe"
+  self._draining = false;
 };
 
 _.extend(Meteor._SynchronousQueue.prototype, {
@@ -80,14 +83,28 @@ _.extend(Meteor._SynchronousQueue.prototype, {
     self._scheduleRun();
     // No need to block.
   },
-  taskRunning: function () {
+
+  flush: function () {
     var self = this;
-    return self._taskRunning;
+    self.runTask(function () {});
   },
 
   safeToRunTask: function () {
     var self = this;
     return Fiber.current && self._currentTaskFiber !== Fiber.current;
+  },
+
+  drain: function () {
+    var self = this;
+    if (self._draining)
+      return;
+    if (!self.safeToRunTask())
+      return;
+    self._draining = true;
+    while (!_.isEmpty(self._taskHandles)) {
+      self.flush();
+    }
+    self._draining = false;
   },
 
   _scheduleRun: function () {
@@ -158,5 +175,3 @@ Meteor._sleepForMs = function (ms) {
   }, ms);
   Fiber.yield();
 };
-
-})();
