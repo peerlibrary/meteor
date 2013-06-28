@@ -239,39 +239,46 @@ var run = function () {
     _.each(info.load, function (filename) {
       var code = fs.readFileSync(path.join(bundle_dir, filename));
 
+      // require or resolve an npm module used by your package, or one
+      // from the dev bundle if you are in an app or your package isn't
+      // using said npm module
+      function require_or_resolve(f, name) {
+        var filePathParts = filename.split(path.sep);
+        if (filePathParts[0] !== 'app' || filePathParts[1] !== 'packages') { // XXX it's weird that we're dependent on the dir structure
+          return f(name); // current no support for npm outside packages. load from dev bundle only
+        } else {
+          var nodeModuleDir = path.join(
+            __dirname,
+            '..' /* get out of server/ */,
+            'app' /* === filePathParts[0] */,
+            'packages' /* === filePathParts[1] */,
+            filePathParts[2] /* package name */,
+            'node_modules',
+            name);
+
+          if (fs.existsSync(nodeModuleDir)) {
+            return f(nodeModuleDir);
+          } else {
+            try {
+              return f(name);
+            } catch (e) {
+              // XXX better message
+              throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends' in package.js within the '" + filePathParts[2] + "' package?");
+            }
+          }
+        }
+      }
+
       // even though the npm packages are correctly placed in
       // node_modules/ relative to the package source, we can't just
       // use standard `require` because packages are loaded using
       // runInThisContext. see #runInThisContext
       var Npm = {
-        // require an npm module used by your package, or one from the
-        // dev bundle if you are in an app or your package isn't using
-        // said npm module
         require: function(name) {
-          var filePathParts = filename.split(path.sep);
-          if (filePathParts[0] !== 'app' || filePathParts[1] !== 'packages') { // XXX it's weird that we're dependent on the dir structure
-            return require(name); // current no support for npm outside packages. load from dev bundle only
-          } else {
-            var nodeModuleDir = path.join(
-              __dirname,
-              '..' /* get out of server/ */,
-              'app' /* === filePathParts[0] */,
-              'packages' /* === filePathParts[1] */,
-              filePathParts[2] /* package name */,
-              'node_modules',
-              name);
-
-            if (fs.existsSync(nodeModuleDir)) {
-              return require(nodeModuleDir);
-            } else {
-              try {
-                return require(name);
-              } catch (e) {
-                // XXX better message
-                throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends' in package.js within the '" + filePathParts[2] + "' package?");
-              }
-            }
-          }
+          return require_or_resolve(require, name);
+        },
+        resolve: function(name) {
+          return require_or_resolve(require.resolve, name);
         }
       };
       // \n is necessary in case final line is a //-comment
