@@ -106,6 +106,19 @@ var Package = function () {
     }
   };
 
+  function require_or_resolve(f, name) {
+    var nodeModuleDir = path.join(self.source_root, '.npm', 'node_modules', name);
+    if (fs.existsSync(nodeModuleDir)) {
+      return f(nodeModuleDir);
+    } else {
+      try {
+        return f(name); // from the dev bundle
+      } catch (e) {
+        throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends'?");
+      }
+    }
+  }
+
   // npm functions that can be called when the package is scanned --
   // visible `Npm` when package.js is executed
   self.npmFacade = {
@@ -126,29 +139,11 @@ var Package = function () {
     },
 
     require: function (name) {
-      var nodeModuleDir = path.join(self.source_root, '.npm', 'node_modules', name);
-      if (fs.existsSync(nodeModuleDir)) {
-        return require(nodeModuleDir);
-      } else {
-        try {
-          return require(name); // from the dev bundle
-        } catch (e) {
-          throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends'?");
-        }
-      }
+      return require_or_resolve(require, name);
     },
 
     resolve: function (name) {
-      var nodeModuleDir = path.join(self.source_root, '.npm', 'node_modules', name);
-      if (fs.existsSync(nodeModuleDir)) {
-        return require.resolve(nodeModuleDir);
-      } else {
-        try {
-          return require.resolve(name); // from the dev bundle
-        } catch (e) {
-          throw new Error("Can't find npm module '" + name + "'. Did you forget to call 'Npm.depends'?");
-        }
-      }
+      return require_or_resolve(require.resolve, name);
     }
   };
 
