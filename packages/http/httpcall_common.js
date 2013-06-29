@@ -9,7 +9,7 @@ Meteor.http._makeErrorByStatus = function(statusCode, content) {
   };
 
   var message = "failed [" + statusCode + "]";
-  if (content)
+  if (content && content.replace)
     message += " " + truncate(content.replace(/\n/g, " "), MAX_LENGTH);
 
   return new Error(message);
