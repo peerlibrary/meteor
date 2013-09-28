@@ -98,7 +98,12 @@ Accounts.registerLoginHandler(function (options) {
   Meteor.users.update(
     userId, {$push: {'services.resume.loginTokens': stampedLoginToken}});
 
-  return {token: stampedLoginToken.token, id: userId, HAMK: serialized.HAMK};
+  return {
+    token: stampedLoginToken.token,
+    tokenExpires: Accounts._tokenExpiration(stampedLoginToken.when),
+    id: userId,
+    HAMK: serialized.HAMK
+  };
 });
 
 // Handler to login with plaintext password.
@@ -137,7 +142,11 @@ Accounts.registerLoginHandler(function (options) {
   Meteor.users.update(
     user._id, {$push: {'services.resume.loginTokens': stampedLoginToken}});
 
-  return {token: stampedLoginToken.token, id: user._id};
+  return {
+    token: stampedLoginToken.token,
+    tokenExpires: Accounts._tokenExpiration(stampedLoginToken.when),
+    id: user._id
+  };
 });
 
 
@@ -231,7 +240,7 @@ Accounts.sendResetPasswordEmail = function (userId, email) {
     throw new Error("No such email for user.");
 
   var token = Random.id();
-  var when = +(new Date);
+  var when = new Date();
   Meteor.users.update(userId, {$set: {
     "services.password.reset": {
       token: token,
@@ -272,7 +281,7 @@ Accounts.sendEnrollmentEmail = function (userId, email) {
 
 
   var token = Random.id();
-  var when = +(new Date);
+  var when = new Date();
   Meteor.users.update(userId, {$set: {
     "services.password.reset": {
       token: token,
@@ -321,7 +330,11 @@ Meteor.methods({resetPassword: function (token, newVerifier) {
   });
 
   this.setUserId(user._id);
-  return {token: stampedLoginToken.token, id: user._id};
+  return {
+    token: stampedLoginToken.token,
+    tokenExpires: Accounts._tokenExpiration(stampedLoginToken.when),
+    id: user._id
+  };
 }});
 
 ///
@@ -355,7 +368,7 @@ Accounts.sendVerificationEmail = function (userId, address) {
   var tokenRecord = {
     token: Random.id(),
     address: address,
-    when: +(new Date)};
+    when: new Date()};
   Meteor.users.update(
     {_id: userId},
     {$push: {'services.email.verificationTokens': tokenRecord}});
@@ -408,7 +421,11 @@ Meteor.methods({verifyEmail: function (token) {
      $push: {'services.resume.loginTokens': stampedLoginToken}});
 
   this.setUserId(user._id);
-  return {token: stampedLoginToken.token, id: user._id};
+  return {
+    token: stampedLoginToken.token,
+    tokenExpires: Accounts._tokenExpiration(stampedLoginToken.when),
+    id: user._id
+  };
 }});
 
 

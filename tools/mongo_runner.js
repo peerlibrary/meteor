@@ -161,6 +161,7 @@ exports.launch_mongo = function (app_dir, port, launch_callback, on_exit_callbac
     var proc = child_process.spawn(mongod_path, [
       '--bind_ip', '127.0.0.1',
       '--smallfiles',
+      '--nohttpinterface',
       '--port', port,
       '--dbpath', data_path
     ]);
@@ -172,7 +173,16 @@ exports.launch_mongo = function (app_dir, port, launch_callback, on_exit_callbac
       callback && callback(err);
     };
 
-    proc.on('exit', on_exit_callback);
+    var stderrOutput = '';
+
+    proc.stderr.setEncoding('utf8');
+    proc.stderr.on('data', function (data) {
+      stderrOutput += data;
+    });
+
+    proc.on('exit', function (code, signal) {
+      on_exit_callback(code, signal, stderrOutput);
+    });
 
     proc.stdout.setEncoding('utf8');
     proc.stdout.on('data', function (data) {

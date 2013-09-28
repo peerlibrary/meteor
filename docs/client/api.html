@@ -62,9 +62,9 @@ that Meteor will call each time a client subscribes to the name.
 
 Publish functions can return a
 [`Collection.Cursor`](#meteor_collection_cursor), in which case Meteor
-will publish that cursor's documents. You can also return an array of
-`Collection.Cursor`s, in which case Meteor will publish all of the
-cursors.
+will publish that cursor's documents to each subscribed client. You can
+also return an array of `Collection.Cursor`s, in which case Meteor will
+publish all of the cursors.
 
 {{#warning}}
 If you return multiple cursors in an array, they currently must all be from
@@ -92,16 +92,15 @@ different collections. We hope to lift this restriction in a future release.
       ];
     });
 
-Otherwise, the publish function should call the functions
-[`added`](#publish_added) (when a new document is added to the published record
-set), [`changed`](#publish_changed) (when some fields on a document in the
-record set are changed or cleared), and [`removed`](#publish_removed) (when
-documents are removed from the published record set) to inform subscribers about
-documents.  These methods are provided by `this` in your publish function.
-
-
-
-<!-- TODO discuss ready -->
+Alternatively, a publish function can directly control its published
+record set by calling the functions [`added`](#publish_added) (to add a
+new document to the published record set), [`changed`](#publish_changed)
+(to change or clear some fields on a document already in the published
+record set), and [`removed`](#publish_removed) (to remove documents from
+the published record set).  Publish functions that use these functions
+should also call [`ready`](#publish_ready) once the initial record set
+is complete.  These methods are provided by `this` in your publish
+function.
 
 Example:
 
@@ -966,6 +965,8 @@ cursor, use [`forEach`](#foreach), [`map`](#map), or [`fetch`](#fetch).
 
 {{> api_box cursor_foreach}}
 
+This interface is compatible with [Array.forEach](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach).
+
 When called from a reactive computation, `forEach` registers dependencies on
 the matching documents.
 
@@ -980,6 +981,8 @@ Examples:
     });
 
 {{> api_box cursor_map}}
+
+This interface is compatible with [Array.map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map).
 
 When called from a reactive computation, `map` registers dependencies on
 the matching documents.
@@ -1249,9 +1252,8 @@ it's up to you to be sure.
 
 {{#api_box_inline fieldspecifiers}}
 
-On the server, queries can specify a particular set of fields to include
-or exclude from the result object.  (The field specifier is currently
-ignored on the client.)
+Queries can specify a particular set of fields to include or exclude from the
+result object.
 
 To exclude certain fields from the result objects, the field specifier
 is a dictionary whose keys are field names and whose values are `0`.
@@ -1263,7 +1265,20 @@ the value.  The `_id` field is still included in the result.
 
     // Users.find({}, {fields: {firstname: 1, lastname: 1}})
 
-It is not possible to mix inclusion and exclusion styles.
+It is not possible to mix inclusion and exclusion styles (exception for `_id`).
+Field operators such as `$` and `$elemMatch` are not available on client side yet.
+
+More advanced example:
+
+    Users.insert({ alterEgos: [{ name: "Kira", alliance: "murderer" },
+                               { name: "L", alliance: "police" }],
+                   name: "Yagami Light" });
+
+    Users.findOne({}, { fields: { 'alterEgos.name': 1, _id: 0 } });
+
+    // returns { alterEgos: [{ name: "Kira" }, { name: "L" }] }
+
+Notice the nested field rule and array behavior, learn more in MongoDB docs.
 
 {{/api_box_inline}}
 
@@ -1409,7 +1424,7 @@ user document:
         { address: "cool@example.com", verified: true },
         { address: "another@different.com", verified: false }
       ],
-      createdAt: 1349761684042,
+      createdAt: Wed Aug 21 2013 15:16:52 GMT-0700 (PDT),
       profile: {
         // The profile is writable by the user by default.
         name: "Joe Schmoe"
@@ -1436,8 +1451,7 @@ treats the following fields specially:
   an email address may belong to at most one user. `verified` is
   a Boolean which is true if the user has [verified the
   address](#accounts_verifyemail) with a token sent over email.
-- `createdAt`: a numeric timestamp (milliseconds since January 1 1970)
-   of the time the user document was created.
+- `createdAt`: the Date at which the user document was created.
 - `profile`: an Object which (by default) the user can create
   and update with any data.
 - `services`: an Object containing data used by particular
@@ -2832,8 +2846,7 @@ For example, the `toJSONValue` method for
 <h2 id="http"><span>HTTP</span></h2>
 
 `HTTP` provides an HTTP request API on the client and server.  To use
-these functions, add the HTTP package to your project with `$ meteor add
-http`.
+these functions, add the HTTP package to your project with `$ meteor add http`.
 
 {{> api_box httpcall}}
 
