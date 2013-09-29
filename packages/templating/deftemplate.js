@@ -207,16 +207,22 @@ Template.__define__ = function (name, raw_func) {
 
 
   if (name) {
-    if (Template[name])
-      var original = Template[name];
+    if (Template[name]) {
+      var originalTemplate = Template[name];
+      var originalTmplData = registeredPartials[name]._tmpl_data;
+    }
 
     Template[name] = partial;
 
-    if (original)
-      _.extend(Template[name], original);
+    if (originalTemplate)
+      _.extend(Template[name], originalTemplate);
 
     _.extend(partial, templateBase);
-    partial._tmpl_data = {};
+
+    if (originalTemplate)
+      partial._tmpl_data = originalTmplData;
+    else
+      partial._tmpl_data = {};
 
     registeredPartials[name] = partial;
   }
