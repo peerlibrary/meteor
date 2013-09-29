@@ -208,10 +208,13 @@ Template.__define__ = function (name, raw_func) {
 
   if (name) {
     if (Template[name])
-      throw new Error("There are multiple templates named '" + name +
-                      "'. Each template needs a unique name.");
+      var original = Template[name];
 
     Template[name] = partial;
+
+    if (original)
+      _.extend(Template[name], original);
+
     _.extend(partial, templateBase);
     partial._tmpl_data = {};
 
