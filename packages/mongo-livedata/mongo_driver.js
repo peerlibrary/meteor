@@ -626,11 +626,6 @@ Cursor.prototype.getTransform = function () {
   return self._cursorDescription.options.transform;
 };
 
-Cursor.prototype.getTransformCollection = function () {
-  var self = this;
-  return self._cursorDescription.options.transformCollection;
-};
-
 // When you call Meteor.publish() with a function that returns a Cursor, we need
 // to transmute it into the equivalent subscription.  This is the function that
 // does that.
@@ -651,7 +646,8 @@ Cursor.prototype._getCollectionName = function () {
 
 Cursor.prototype.observe = function (callbacks) {
   var self = this;
-  return LocalCollection._observeFromObserveChanges(self, callbacks);
+  var collection = self._mongo._getCollection(self._cursorDescription.collectionName);
+  return LocalCollection._observeFromObserveChanges(self, callbacks, collection);
 };
 
 Cursor.prototype.observeChanges = function (callbacks) {
@@ -706,10 +702,8 @@ var SynchronousCursor = function (dbCursor, cursorDescription, options) {
     self._transform = Deps._makeNonreactive(
       cursorDescription.options.transform
     );
-    self._transformCollection = cursorDescription.options.transformCollection;
   } else {
     self._transform = null;
-    self._transformCollection = null;
   }
 
   // Need to specify that the callback is the first argument to nextObject,
@@ -740,7 +734,7 @@ _.extend(SynchronousCursor.prototype, {
       }
 
       if (self._transform) {
-        doc = self._transform(doc, self._transformCollection);
+        doc = self._transform(doc, self._dbCursor.collection);
       }
 
       return doc;
@@ -838,9 +832,8 @@ MongoConnection.prototype._observeChanges = function (
     return self._observeChangesTailable(cursorDescription, ordered, callbacks);
   }
 
-  var observeKeyObject = _.extend({ordered: ordered}, cursorDescription);
-  observeKeyObject.options = _.omit(observeKeyObject.options, 'transformCollection');
-  var observeKey = JSON.stringify(observeKeyObject);
+  var observeKey = JSON.stringify(
+    _.extend({ordered: ordered}, cursorDescription));
 
   var liveResultsSet;
   var observeHandle;

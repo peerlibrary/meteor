@@ -842,7 +842,7 @@ testAsyncMulti('mongo-livedata - document goes through a transform, ' + idGenera
         transform: function (doc, collection) {return {seconds: doc.d.getSeconds(), _collection: collection};}
       });
       test.equal(res.seconds, 50);
-      test.instanceOf(res._collection, Meteor.isClient ? LocalCollection : Meteor.Collection);
+      test.isTrue(res._collection);
       self.coll.remove(id);
     }));
   },
