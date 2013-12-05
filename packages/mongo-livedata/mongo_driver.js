@@ -646,8 +646,7 @@ Cursor.prototype._getCollectionName = function () {
 
 Cursor.prototype.observe = function (callbacks) {
   var self = this;
-  var collection = self._mongo._getCollection(self._cursorDescription.collectionName);
-  return LocalCollection._observeFromObserveChanges(self, callbacks, collection);
+  return LocalCollection._observeFromObserveChanges(self, callbacks);
 };
 
 Cursor.prototype.observeChanges = function (callbacks) {
@@ -733,9 +732,8 @@ _.extend(SynchronousCursor.prototype, {
         self._visitedIds[strId] = true;
       }
 
-      if (self._transform) {
-        doc = self._transform(doc, self._dbCursor.collection);
-      }
+      if (self._transform)
+        doc = self._transform(doc);
 
       return doc;
     }

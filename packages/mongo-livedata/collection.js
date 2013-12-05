@@ -690,10 +690,10 @@ Meteor.Collection.prototype._isInsecure = function () {
   return self._insecure;
 };
 
-var docToValidate = function (validator, doc, collection) {
+var docToValidate = function (validator, doc) {
   var ret = doc;
   if (validator.transform)
-    ret = validator.transform(EJSON.clone(doc), collection);
+    ret = validator.transform(EJSON.clone(doc));
   return ret;
 };
 
@@ -703,13 +703,13 @@ Meteor.Collection.prototype._validatedInsert = function(userId, doc) {
   // call user validators.
   // Any deny returns true means denied.
   if (_.any(self._validators.insert.deny, function(validator) {
-    return validator(userId, docToValidate(validator, doc, self._collection));
+    return validator(userId, docToValidate(validator, doc));
   })) {
     throw new Meteor.Error(403, "Access denied");
   }
   // Any allow returns true means proceed. Throw error if they all fail.
   if (_.all(self._validators.insert.allow, function(validator) {
-    return !validator(userId, docToValidate(validator, doc, self._collection));
+    return !validator(userId, docToValidate(validator, doc));
   })) {
     throw new Meteor.Error(403, "Access denied");
   }
@@ -717,9 +717,9 @@ Meteor.Collection.prototype._validatedInsert = function(userId, doc) {
   self._collection.insert.call(self._collection, doc);
 };
 
-var transformDoc = function (validator, doc, collection) {
+var transformDoc = function (validator, doc) {
   if (validator.transform)
-    return validator.transform(doc, collection);
+    return validator.transform(doc);
   return doc;
 };
 
@@ -783,7 +783,7 @@ Meteor.Collection.prototype._validatedUpdate = function(
   // Any deny returns true means denied.
   if (_.any(self._validators.update.deny, function(validator) {
     if (!factoriedDoc)
-      factoriedDoc = transformDoc(validator, doc, self._collection);
+      factoriedDoc = transformDoc(validator, doc);
     return validator(userId,
                      factoriedDoc,
                      fields,
@@ -794,7 +794,7 @@ Meteor.Collection.prototype._validatedUpdate = function(
   // Any allow returns true means proceed. Throw error if they all fail.
   if (_.all(self._validators.update.allow, function(validator) {
     if (!factoriedDoc)
-      factoriedDoc = transformDoc(validator, doc, self._collection);
+      factoriedDoc = transformDoc(validator, doc);
     return !validator(userId,
                       factoriedDoc,
                       fields,
@@ -843,13 +843,13 @@ Meteor.Collection.prototype._validatedRemove = function(userId, selector) {
   // call user validators.
   // Any deny returns true means denied.
   if (_.any(self._validators.remove.deny, function(validator) {
-    return validator(userId, transformDoc(validator, doc, self._collection));
+    return validator(userId, transformDoc(validator, doc));
   })) {
     throw new Meteor.Error(403, "Access denied");
   }
   // Any allow returns true means proceed. Throw error if they all fail.
   if (_.all(self._validators.remove.allow, function(validator) {
-    return !validator(userId, transformDoc(validator, doc, self._collection));
+    return !validator(userId, transformDoc(validator, doc));
   })) {
     throw new Meteor.Error(403, "Access denied");
   }
