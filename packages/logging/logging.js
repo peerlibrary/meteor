@@ -96,9 +96,6 @@ Log._getCallerDetails = function (ignoreRegex) {
     if (line.match(/^\s*at eval \(eval/)) {
       return {file: "eval"};
     }
-    else if (line.match(/^\s*at <anonymous>/)) {
-      return {file: "anonymous"};
-    }
 
     // XXX probably wants to be / or .js in case no source maps
     if (line.match(/packages\/logging(?:\/|(?::tests)?\.js)/))
