@@ -591,6 +591,10 @@ var runWebAppServer = function () {
       bundledJsCssPrefix ||
         __meteor_runtime_config__.ROOT_URL_PATH_PREFIX || "");
 
+    boilerplateHtml = boilerplateHtml.replace(
+        /##TITLE##/g,
+      __meteor_runtime_config__.TITLE ? "<title>" + __meteor_runtime_config__.TITLE + "</title>" : "");
+
     // only start listening after all the startup code has run.
     var localPort = parseInt(process.env.PORT) || 0;
     var host = process.env.BIND_IP;
