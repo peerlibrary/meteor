@@ -21,16 +21,19 @@ OAuth1Binding = function(config, urls) {
 OAuth1Binding.prototype.prepareRequestToken = function(callbackUrl) {
   var self = this;
 
-  var headers = self._buildHeader({
-    oauth_callback: callbackUrl
-  });
-
   var requestTokenObj = url.parse(self._urls.requestToken, true);
   var params = requestTokenObj.query || {};
 
   requestTokenObj.query = {};
   requestTokenObj.search = '';
   var requestToken = url.format(requestTokenObj);
+
+  if (!params.oauth_callback) {
+    params.oauth_callback = callbackUrl;
+  }
+
+  params = self._buildHeader(params);
+  var headers = self._buildHeader(params);
 
   var response = self._call('POST', requestToken, headers, params);
   var tokens = querystring.parse(response.content);
@@ -148,12 +151,18 @@ OAuth1Binding.prototype._call = function(method, url, headers, params, callback)
   // Get the signature
   headers.oauth_signature =
     self._getSignature(method, url, headers, self.accessTokenSecret, params);
+  params.oauth_signature = headers.oauth_signature;
 
   // Make a authorization string according to oauth1 spec
   var authString = self._getAuthHeaderString(headers);
 
   // Make signed request
   try {
+    console.log("OUT", method, url,  {
+      params: params,
+      headers: {
+        Authorization: authString
+      }});
     var response = HTTP.call(method, url, {
       params: params,
       headers: {
@@ -165,10 +174,10 @@ OAuth1Binding.prototype._call = function(method, url, headers, params, callback)
       }
       callback(error, response);
     });
-    // We store nonce so that JWTs can be validated
     response.nonce = headers.oauth_nonce;
     return response;
   } catch (err) {
+    console.log(err.stack);
     throw _.extend(new Error("Failed to send OAuth1 request to " + url + ". " + err.message),
                    {response: err.response});
   }

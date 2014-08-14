@@ -21,7 +21,7 @@ OAuth._requestHandlers['1'] = function (service, query, res) {
     oauthBinding.prepareRequestToken(callbackUrl);
 
     // Keep track of request token so we can verify it on the next step
-    OAuth._storeRequestToken(query.state,
+    OAuth._storeRequestToken(oauthBinding.requestToken,
       oauthBinding.requestToken,
       oauthBinding.requestTokenSecret
     );
@@ -34,6 +34,7 @@ OAuth._requestHandlers['1'] = function (service, query, res) {
       var redirectUrlObj = url.parse(urls.authenticate, true);
       redirectUrlObj.query = redirectUrlObj.query || {};
       redirectUrlObj.query.oauth_token = oauthBinding.requestToken;
+      redirectUrlObj.query.oauth_consumer_key = oauthBinding._config.consumerKey;
       redirectUrlObj.search = '';
       redirectUrl = url.format(redirectUrlObj);
     }
@@ -46,7 +47,7 @@ OAuth._requestHandlers['1'] = function (service, query, res) {
     // and close the window to allow the login handler to proceed
 
     // Get the user's request token so we can verify it and clear it
-    var requestTokenInfo = OAuth._retrieveRequestToken(query.state);
+    var requestTokenInfo = OAuth._retrieveRequestToken(query.oauth_token);
 
     if (!requestTokenInfo) {
       throw new Error("Unable to retrieve request token");
@@ -69,7 +70,7 @@ OAuth._requestHandlers['1'] = function (service, query, res) {
 
       // Store the login result so it can be retrieved in another
       // browser tab by the result handler
-      OAuth._storePendingCredential(query.state, {
+      OAuth._storePendingCredential(query.oauth_token, {
         serviceName: service.serviceName,
         serviceData: oauthResult.serviceData,
         options: oauthResult.options

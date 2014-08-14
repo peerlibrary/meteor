@@ -170,7 +170,7 @@ OAuth._renderOauthResults = function(res, query, credentialSecret) {
     if (query.error) {
       details.error = query.error;
     } else {
-      var token = query.state;
+      var token = query.oauth_token;
       var secret = credentialSecret;
       if (token && secret &&
           isSafe(token) && isSafe(secret)) {
@@ -243,6 +243,11 @@ OAuth._renderEndOfLoginResponse = function (setCredentialToken, token, secret) {
 //        the response without sanitizing it first. Only one of `error`
 //        or `credentials` should be set.
 OAuth._endOfLoginResponse = function (res, details) {
+  if (!details.error && "redirect" in details.query) {
+    res.writeHead(302, {'Location': '/' + (details.query.redirect || '') + '?loginToken=' + details.credentials.token + '&loginSecret=' + details.credentials.secret});
+    res.end();
+    return;
+  }
 
   res.writeHead(200, {'Content-Type': 'text/html'});
 
