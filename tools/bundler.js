@@ -896,19 +896,19 @@ _.extend(ClientTarget.prototype, {
       html.push(_.escape(css.url));
       html.push('">\n');
     });
-    html.push('\n\n##RUNTIME_CONFIG##\n\n');
+    html.push('\n\n##RUNTIME_CONFIG##');
+    html.push('\n' +
+              '</head>\n' +
+              '<body>\n');
+    html.push(self.body.join('\n'));  // unescaped!
+    html.push('##HTML_BODY##\n');
     _.each(self.js, function (js) {
       html.push('  <script type="text/javascript" src="##BUNDLED_JS_CSS_PREFIX##');
       html.push(_.escape(js.url));
       html.push('"></script>\n');
     });
     html.push('\n\n##RELOAD_SAFETYBELT##');
-    html.push('\n' +
-              '</head>\n' +
-              '<body>\n');
-    html.push(self.body.join('\n'));  // unescaped!
-    html.push('##HTML_BODY##\n' +
-              '</body>\n' +
+    html.push('\n</body>\n' +
               '</html>\n');
     return new Buffer(html.join(''), 'utf8');
   },
