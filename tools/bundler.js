@@ -888,6 +888,9 @@ _.extend(ClientTarget.prototype, {
     html.push('<!DOCTYPE html>\n' +
               '<html##HTML_ATTRIBUTES##>\n' +
               '<head>\n');
+    html.push('##TITLE##\n\n');
+    html.push(self.head.join('\n'));  // unescaped!
+    html.push('\n\n');
     _.each(self.css, function (css) {
       html.push('  <link rel="stylesheet" href="##BUNDLED_JS_CSS_PREFIX##');
       html.push(_.escape(css.url));
@@ -900,13 +903,11 @@ _.extend(ClientTarget.prototype, {
       html.push('"></script>\n');
     });
     html.push('\n\n##RELOAD_SAFETYBELT##');
-    html.push('\n\n##TITLE##\n\n');
-    html.push(self.head.join('\n'));  // unescaped!
     html.push('\n' +
               '</head>\n' +
               '<body>\n');
     html.push(self.body.join('\n'));  // unescaped!
-    html.push('\n' +
+    html.push('##HTML_BODY##\n' +
               '</body>\n' +
               '</html>\n');
     return new Buffer(html.join(''), 'utf8');

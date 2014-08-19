@@ -144,6 +144,23 @@ WebApp.addHtmlAttributeHook = function (hook) {
   htmlAttributeHooks.push(hook);
 };
 
+// HTML body hooks: functions to be called to determine any body content to be
+// added inside the '<body>' tag. Each function is passed a 'request' object
+// (see #BrowserIdentification) and should return a string,
+var htmlBodyHooks = [];
+var htmlBody = function (template, request) {
+  var bodyContent = '';
+  _.each(htmlBodyHooks || [], function (hook) {
+    var body = hook(request);
+    if (body !== null && body !== undefined && body !== '')
+      bodyContent += body;
+  });
+  return template.replace('##HTML_BODY##', bodyContent);
+};
+WebApp.addHtmlBodyHook = function (hook) {
+  htmlBodyHooks.push(hook);
+};
+
 // Serve app HTML for this URL?
 var appUrl = function (url) {
   if (url === '/favicon.ico' || url === '/robots.txt')
@@ -460,7 +477,7 @@ var runWebAppServer = function () {
       return undefined;
     }
     res.writeHead(200, headers);
-    var requestSpecificHtml = htmlAttributes(boilerplateHtml, request);
+    var requestSpecificHtml = htmlBody(htmlAttributes(boilerplateHtml, request), request);
     res.write(requestSpecificHtml);
     res.end();
     return undefined;
