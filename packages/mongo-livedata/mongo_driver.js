@@ -205,11 +205,11 @@ MongoConnection.prototype._getCollection = function (collectionName) {
 };
 
 MongoConnection.prototype._createCappedCollection = function (collectionName,
-                                                              byteSize, maxDocuments) {
+                                                              byteSize) {
   var self = this;
   var future = new Future();
   self._withDb(function (db) {
-    db.createCollection(collectionName, {capped: true, size: byteSize, max: maxDocuments},
+    db.createCollection(collectionName, {capped: true, size: byteSize},
                         future.resolver());
   });
   future.wait();
