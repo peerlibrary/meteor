@@ -152,6 +152,8 @@ _.extend(PollingObserveDriver.prototype, {
       // database.  That's fine --- we will repoll later anyway. But we should
       // make sure not to lose track of this cycle's writes.
       Array.prototype.push.apply(self._pendingWrites, writesForCycle);
+      var util = Npm.require('util');
+      Meteor._debug("getRawObjects failed for: " + util.inspect(self._cursorDescription, false, 10));
       throw e;
     }
 
