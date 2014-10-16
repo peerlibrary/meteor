@@ -1,7 +1,10 @@
-Template.headline.release = function () {
-  return Meteor.release || "(checkout)";
-};
+var release = Meteor.release ? "0.9.4" : "(checkout)";
 
+Template.headline.helpers({
+  release: function () {
+    return release;
+  }
+});
 
 Meteor.startup(function () {
   // XXX this is broken by the new multi-page layout.  Also, it was
@@ -89,10 +92,20 @@ Meteor.startup(function () {
 
   // Make external links open in a new tab.
   $('a:not([href^="#"])').attr('target', '_blank');
+
+  // Hide menu by tapping on background
+  $('#main').on('click', function () {
+    hideMenu();
+  });
 });
 
+var hideMenu = function () {
+  $('#nav').removeClass('show');
+  $('#menu-ico').removeClass('hidden');
+};
+
 var toc = [
-  {name: "Meteor " + Template.headline.release(), id: "top"}, [
+  {name: "Meteor " + release, id: "top"}, [
     "Quick start",
     "Seven principles",
     "Resources"
@@ -102,8 +115,7 @@ var toc = [
     "Structuring your app",
     "Data and security",
     "Reactivity",
-    "Live HTML",
-    "Templates",
+    "Live HTML templates",
     "Using packages",
     "Namespacing",
     "Deploying",
@@ -114,7 +126,9 @@ var toc = [
     "Core", [
       "Meteor.isClient",
       "Meteor.isServer",
+      "Meteor.isCordova",
       "Meteor.startup",
+      "Meteor.wrapAsync",
       "Meteor.absoluteUrl",
       "Meteor.settings",
       "Meteor.release"
@@ -148,6 +162,12 @@ var toc = [
       "Meteor.apply"
     ],
 
+    {name: "Check", id: "check_package"}, [
+      "check",
+      "Match.test",
+      {name: "Match patterns", style: "noncode"}
+    ],
+
     {name: "Server connections", id: "connections"}, [
       "Meteor.status",
       "Meteor.reconnect",
@@ -157,7 +177,7 @@ var toc = [
     ],
 
     {name: "Collections", id: "collections"}, [
-      "Meteor.Collection", [
+      "Mongo.Collection", [
         {instance: "collection", name: "find"},
         {instance: "collection", name: "findOne"},
         {instance: "collection", name: "insert"},
@@ -168,17 +188,16 @@ var toc = [
         {instance: "collection", name: "deny"}
       ],
 
-      "Meteor.Collection.Cursor", [
+      "Mongo.Cursor", [
         {instance: "cursor", name: "forEach"},
         {instance: "cursor", name: "map"},
         {instance: "cursor", name: "fetch"},
         {instance: "cursor", name: "count"},
-        {instance: "cursor", name: "rewind"},
         {instance: "cursor", name: "observe"},
         {instance: "cursor", name: "observeChanges", id: "observe_changes"}
       ],
       {type: "spacer"},
-      {name: "Meteor.Collection.ObjectID", id: "collection_object_id"},
+      {name: "Mongo.ObjectID", id: "mongo_object_id"},
       {type: "spacer"},
       {name: "Selectors", style: "noncode"},
       {name: "Modifiers", style: "noncode"},
@@ -214,7 +233,7 @@ var toc = [
       "Accounts.onCreateUser",
       "Accounts.validateLoginAttempt",
       "Accounts.onLogin",
-      {name: "Accounts.onLoginFailure", id: "accounts_onlogin"},
+      {name: "Accounts.onLoginFailure", id: "accounts_onlogin"}
     ],
 
     {name: "Passwords", id: "accounts_passwords"}, [
@@ -229,38 +248,63 @@ var toc = [
       "Accounts.sendResetPasswordEmail",
       "Accounts.sendEnrollmentEmail",
       "Accounts.sendVerificationEmail",
+      {type: "spacer"},
+
+      {name: "Accounts.onResetPasswordLink", id: "Accounts-onResetPasswordLink"},
+      {name: "Accounts.onEnrollmentLink", id: "Accounts-onEnrollmentLink"},
+      {name: "Accounts.onEmailVerificationLink", id: "Accounts-onEmailVerificationLink"},
+      {type: "spacer"},
+
       "Accounts.emailTemplates"
     ],
 
     {name: "Templates", id: "templates_api"}, [
-      {prefix: "Template", instance: "myTemplate", id: "template_call"}, [
-        {name: "rendered", id: "template_rendered"},
-        {name: "created", id: "template_created"},
-        {name: "destroyed", id: "template_destroyed"},
+      {prefix: "Template", instance: "myTemplate", id: "templates_api"}, [
         {name: "events", id: "template_events"},
         {name: "helpers", id: "template_helpers"},
-        {name: "preserve", id: "template_preserve"}
+        {name: "rendered", id: "template_rendered"},
+        {name: "created", id: "template_created"},
+        {name: "destroyed", id: "template_destroyed"}
       ],
       {name: "Template instances", id: "template_inst"}, [
-        {instance: "this", name: "findAll", id: "template_findAll"},
-        {instance: "this", name: "find", id: "template_find"},
-        {instance: "this", name: "firstNode", id: "template_firstNode"},
-        {instance: "this", name: "lastNode", id: "template_lastNode"},
-        {instance: "this", name: "data", id: "template_data"}
+        {instance: "template", name: "findAll", id: "template_findAll"},
+        {instance: "template", name: "$", id: "template_$"},
+        {instance: "template", name: "find", id: "template_find"},
+        {instance: "template", name: "firstNode", id: "template_firstNode"},
+        {instance: "template", name: "lastNode", id: "template_lastNode"},
+        {instance: "template", name: "data", id: "template_data"},
+        {instance: "template", name: "autorun", id: "template_autorun"},
+        {instance: "template", name: "view", id: "template_view"}
       ],
-      "Meteor.render",
-      "Meteor.renderList",
+      "Template.registerHelper",
+      "Template.instance",
+      "Template.currentData",
+      "Template.parentData",
+      "Template.body",
+      {name: "{{> Template.dynamic}}", id: "template_dynamic"},
       {type: "spacer"},
-      {name: "Event maps", style: "noncode"},
-      {name: "Constant regions", style: "noncode", id: "constant"},
-      {name: "Reactivity isolation", style: "noncode", id: "isolate"}
-     ],
-
-    "Match", [
-      "check",
-      "Match.test",
-      {name: "Match patterns", style: "noncode"}
+      {name: "Event maps", style: "noncode"}
     ],
+    "Blaze", [
+      "Blaze.render",
+      "Blaze.renderWithData",
+      "Blaze.remove",
+      "Blaze.getData",
+      "Blaze.toHTML",
+      "Blaze.toHTMLWithData",
+      "Blaze.View", [
+        "Blaze.currentView",
+        "Blaze.getView",
+        "Blaze.With",
+        "Blaze.If",
+        "Blaze.Unless",
+        "Blaze.Each"
+      ],
+      "Blaze.Template",
+      "Blaze.isTemplate",
+      {type: "spacer"},
+      {name: "Renderable content", id: "renderable_content", style: "noncode"}
+     ],
 
     "Timers", [
       "Meteor.setTimeout",
@@ -269,15 +313,15 @@ var toc = [
       "Meteor.clearInterval"
     ],
 
-    "Deps", [
-      "Deps.autorun",
-      "Deps.flush",
-      "Deps.nonreactive",
-      "Deps.active",
-      "Deps.currentComputation",
-      "Deps.onInvalidate",
-      "Deps.afterFlush",
-      "Deps.Computation", [
+    "Tracker", [
+      "Tracker.autorun",
+      "Tracker.flush",
+      "Tracker.nonreactive",
+      "Tracker.active",
+      "Tracker.currentComputation",
+      "Tracker.onInvalidate",
+      "Tracker.afterFlush",
+      "Tracker.Computation", [
         {instance: "computation", name: "stop", id: "computation_stop"},
         {instance: "computation", name: "invalidate", id: "computation_invalidate"},
         {instance: "computation", name: "onInvalidate", id: "computation_oninvalidate"},
@@ -285,11 +329,17 @@ var toc = [
         {instance: "computation", name: "invalidated", id: "computation_invalidated"},
         {instance: "computation", name: "firstRun", id: "computation_firstrun"}
       ],
-      "Deps.Dependency", [
+      "Tracker.Dependency", [
         {instance: "dependency", name: "changed", id: "dependency_changed"},
         {instance: "dependency", name: "depend", id: "dependency_depend"},
         {instance: "dependency", name: "hasDependents", id: "dependency_hasdependents"}
       ]
+    ],
+
+    {name: "ReactiveVar", id: "reactivevar_pkg"}, [
+      "ReactiveVar",
+      {instance: "reactiveVar", name: "get", id: "reactivevar_get"},
+      {instance: "reactiveVar", name: "set", id: "reactivevar_set"}
     ],
 
     // "Environment Variables", [
@@ -311,10 +361,10 @@ var toc = [
       {name: "EJSON.isBinary", id: "ejson_is_binary"},
       {name: "EJSON.addType", id: "ejson_add_type"},
       [
-        {instance: "instance", id: "ejson_type_typeName", name: "typeName"},
-        {instance: "instance", id: "ejson_type_toJSONValue", name: "toJSONValue"},
-        {instance: "instance", id: "ejson_type_clone", name: "clone"},
-        {instance: "instance", id: "ejson_type_equals", name: "equals"}
+        {instance: "customType", id: "ejson_type_typeName", name: "typeName"},
+        {instance: "customType", id: "ejson_type_toJSONValue", name: "toJSONValue"},
+        {instance: "customType", id: "ejson_type_clone", name: "clone"},
+        {instance: "customType", id: "ejson_type_equals", name: "equals"}
       ]
     ],
 
@@ -332,27 +382,52 @@ var toc = [
     {name: "Assets", id: "assets"}, [
       {name: "Assets.getText", id: "assets_getText"},
       {name: "Assets.getBinary", id: "assets_getBinary"}
+    ],
+
+    {name: "package.js", id: "packagejs"}, [
+      {name: "Package.describe", id: "packagedescription"},
+      {name: "Package.onUse", id: "packagedefinition"}, [
+        {name: "api.versionsFrom", id: "pack_versions"},
+        {name: "api.use", id: "pack_use"},
+        {name: "api.imply", id: "pack_api_imply"},
+        {name: "api.export", id: "pack_export"},
+        {name: "api.addFiles", id: "pack_addFiles"}
+      ],
+      {name: "Package.onTest", id: "packagetests"},
+      {name: "Npm.depends", id: "Npm-depends"},
+      {name: "Npm.require", id: "Npm-require"},
+      {name: "Cordova.depends", id: "Cordova-depends"},
+      {name: "Package.registerBuildPlugin", id: "Package-registerBuildPlugin"}, [
+        {name: "Plugin.registerSourceHandler", id: "Plugin-registerSourceHandler"}
+      ]
+    ],
+
+    {name: "mobile-config.js", id: "mobileconfigjs"}, [
+      {name: "App.info", id: "App-info"},
+      {name: "App.setPreference", id: "App-setPreference"},
+      {name: "App.configurePlugin", id: "App-configurePlugin"},
+      {name: "App.icons", id: "App-icons"},
+      {name: "App.launchScreens", id: "App-launchScreens"}
     ]
   ],
 
   "Packages", [ [
     "accounts-ui",
-    "amplify",
     "appcache",
     "audit-argument-checks",
-    "backbone",
-    "bootstrap",
     "browser-policy",
     "coffeescript",
-    "d3",
+    "fastclick",
     "force-ssl",
     "jquery",
     "less",
+    "oauth-encryption",
     "random",
     "spiderable",
     "stylus",
     "showdown",
-    "underscore"
+    "underscore",
+    "webapp"
   ] ],
 
   "Command line", [ [
@@ -367,7 +442,14 @@ var toc = [
     "meteor list",
     "meteor mongo",
     "meteor reset",
-    "meteor bundle"
+    "meteor build",
+    "meteor search",
+    "meteor show",
+    "meteor publish",
+    "meteor publish-for-arch",
+    "meteor publish-release",
+    "meteor test-packages",
+    "meteor admin"
   ] ]
 ];
 
@@ -376,193 +458,74 @@ var name_to_id = function (name) {
   return x;
 };
 
-Template.nav.sections = function () {
-  var ret = [];
-  var walk = function (items, depth) {
-    _.each(items, function (item) {
-      if (item instanceof Array)
-        walk(item, depth + 1);
-      else {
-        if (typeof(item) === "string")
-          item = {name: item};
-        ret.push(_.extend({
-          type: "section",
-          id: item.name && name_to_id(item.name) || undefined,
-          depth: depth,
-          style: ''
-        }, item));
-      }
-    });
-  };
-
-  walk(toc, 1);
-  return ret;
-};
-
-Template.nav.type = function (what) {
-  return this.type === what;
-}
-
-Template.nav.maybe_current = function () {
-  return Session.equals("section", this.id) ? "current" : "";
-};
-
-Handlebars.registerHelper('warning', function(fn) {
-  return Template.warning_helper(fn(this));
-});
-
-Handlebars.registerHelper('note', function(fn) {
-  return Template.note_helper(fn(this));
-});
-
-// "name" argument may be provided as part of options.hash instead.
-Handlebars.registerHelper('dtdd', function(name, options) {
-  if (options && options.hash) {
-    // {{#dtdd name}}
-    options.hash.name = name;
-  } else {
-    // {{#dtdd name="foo" type="bar"}}
-    options = name;
-  }
-
-  return Template.dtdd_helper({descr: options.fn(this),
-                               name: options.hash.name,
-                               type: options.hash.type});
-});
-
-Handlebars.registerHelper('better_markdown', function(fn) {
-  var converter = new Showdown.converter();
-  var input = fn(this);
-
-  ///////
-  // Make Markdown *actually* skip over block-level elements when
-  // processing a string.
-  //
-  // Official Markdown doesn't descend into
-  // block elements written out as HTML (divs, tables, etc.), BUT
-  // it doesn't skip them properly either.  It assumes they are
-  // either pretty-printed with their contents indented, or, failing
-  // that, it just scans for a close tag with the same name, and takes
-  // it regardless of whether it is the right one.  As a hack to work
-  // around Markdown's hacks, we find the block-level elements
-  // using a proper recursive method and rewrite them to be indented
-  // with the final close tag on its own line.
-  ///////
-
-  // Open-block tag should be at beginning of line,
-  // and not, say, in a string literal in example code, or in a pre block.
-  // Tag must be followed by a non-word-char so that we match whole tag, not
-  // eg P for PRE.  All regexes we wish to use when scanning must have
-  // 'g' flag so that they respect (and set) lastIndex.
-  // Assume all tags are lowercase.
-  var rOpenBlockTag = /^\s{0,2}<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)(?=\W)/mg;
-  var rTag = /<(\/?\w+)/g;
-  var idx = 0;
-  var newParts = [];
-  var blockBuf = [];
-  // helper function to execute regex `r` starting at idx and putting
-  // the end index back into idx; accumulate the intervening string
-  // into an array; and return the regex's first capturing group.
-  var rcall = function(r, inBlock) {
-    var lastIndex = idx;
-    r.lastIndex = lastIndex;
-    var match = r.exec(input);
-    var result = null;
-    if (! match) {
-      idx = input.length;
-    } else {
-      idx = r.lastIndex;
-      result = match[1];
-    }
-    (inBlock ? blockBuf : newParts).push(input.substring(lastIndex, idx));
-    return result;
-  };
-
-  // This is a tower of terrible hacks.
-  // Replace Spark annotations <$...> ... </$...> with HTML comments, and
-  // space out the comments on their own lines.  This keeps them from
-  // interfering with Markdown's paragraph parsing.
-  // Really, running Markdown multiple times on the same string is just a
-  // bad idea.
-  input = input.replace(/<(\/?\$.*?)>/g, '<!--$1-->');
-  input = input.replace(/<!--.*?-->/g, '\n\n$&\n\n');
-
-  var hashedBlocks = {};
-  var numHashedBlocks = 0;
-
-  var nestedTags = [];
-  while (idx < input.length) {
-    var blockTag = rcall(rOpenBlockTag, false);
-    if (blockTag) {
-      nestedTags.push(blockTag);
-      while (nestedTags.length) {
-        var tag = rcall(rTag, true);
-        if (! tag) {
-          throw new Error("Expected </"+nestedTags[nestedTags.length-1]+
-                          "> but found end of string");
-        } else if (tag.charAt(0) === '/') {
-          // close tag
-          var tagToPop = tag.substring(1);
-          var tagPopped = nestedTags.pop();
-          if (tagPopped !== tagToPop)
-            throw new Error(("Mismatched close tag, expected </"+tagPopped+
-                             "> but found </"+tagToPop+">: "+
-                             input.substr(idx-50,50)+"{HERE}"+
-                             input.substr(idx,50)).replace(/\n/g,'\\n'));
-        } else {
-          // open tag
-          nestedTags.push(tag);
+Template.nav.helpers({
+  sections: function () {
+    var ret = [];
+    var walk = function (items, depth) {
+      _.each(items, function (item) {
+        // Work around (eg) accidental trailing commas leading to spurious holes
+        // in IE8.
+        if (!item)
+          return;
+        if (item instanceof Array)
+          walk(item, depth + 1);
+        else {
+          if (typeof(item) === "string")
+            item = {name: item};
+          ret.push(_.extend({
+            type: "section",
+            id: item.name && name_to_id(item.name) || undefined,
+            depth: depth,
+            style: ''
+          }, item));
         }
-      }
-      var newBlock = blockBuf.join('');
-      var openTagFinish = newBlock.indexOf('>') + 1;
-      var closeTagLoc = newBlock.lastIndexOf('<');
+      });
+    };
 
-      var key = ++numHashedBlocks;
-      hashedBlocks[key] = newBlock.slice(openTagFinish, closeTagLoc);
-      newParts.push(newBlock.slice(0, openTagFinish),
-                    '!!!!HTML:'+key+'!!!!',
-                    newBlock.slice(closeTagLoc));
-      blockBuf.length = 0;
-    }
+    walk(toc, 1);
+    return ret;
+  },
+
+  type: function (what) {
+    return this.type === what;
+  },
+
+  maybe_current: function () {
+    return Session.equals("section", this.id) ? "current" : "";
   }
-
-  var newInput = newParts.join('');
-  var output = converter.makeHtml(newInput);
-
-  output = output.replace(/!!!!HTML:(.*?)!!!!/g, function(z, a) {
-    return hashedBlocks[a];
-  });
-
-  output = output.replace(/<!--(\/?\$.*?)-->/g, '<$1>');
-
-  return output;
 });
 
-Handlebars.registerHelper('dstache', function() {
+Template.nav_section.helpers({
+  depthIs: function (n) {
+    return this.depth === n;
+  }
+});
+
+// Show hidden TOC when menu icon is tapped
+Template.nav.events({
+  'click #menu-ico' : function () {
+    $('#nav').addClass('show');
+    $('#menu-ico').addClass('hidden');
+  },
+  // Hide TOC when selecting an item
+  'click a' : function () {
+    hideMenu();
+  }
+});
+
+UI.registerHelper('dstache', function() {
   return '{{';
 });
 
-Handlebars.registerHelper('tstache', function() {
+UI.registerHelper('tstache', function() {
   return '{{{';
 });
 
-Handlebars.registerHelper('api_section', function(id, nameFn) {
-  return Template.api_section_helper(
-    {name: nameFn(this), id:id}, true);
+UI.registerHelper('lt', function () {
+  return '<';
 });
 
-Handlebars.registerHelper('api_box_inline', function(box, fn) {
-  return Template.api_box(_.extend(box, {body: fn(this)}), true);
-});
-
-Template.api_box.bare = function() {
-  return ((this.descr && this.descr.length) ||
-          (this.args && this.args.length) ||
-          (this.options && this.options.length)) ? "" : "bareapi";
-};
-
-var check_links = function() {
+check_links = function() {
   var body = document.body.innerHTML;
 
   var id_set = {};
@@ -596,4 +559,42 @@ var check_links = function() {
   });
 
   return "DONE";
+};
+
+var basicTypes = ["String", "Number", "Boolean", "Function", "Any", "Object",
+  "Array", "null", "undefined", "Integer", "Error"];
+
+// are all types either normal types or links?
+check_types = function () {
+  $(".new-api-box .type").each(function () {
+    var typeSpan = this;
+
+    var typesPipeSeparated =
+      $(typeSpan).text().replace(/, or /g, "|").replace(/( or )/g, "|")
+        .replace(/, /g, "|");
+
+    _.each(typesPipeSeparated.split("|"), function (text) {
+      if (! text) {
+        console.log(typeSpan);
+        return;
+      }
+
+      text = text.replace(/^\s+|\s+$/g, '');
+
+      if (_.contains(basicTypes, text)) {
+        return; // all good
+      }
+
+      var hasLink = false;
+      $(typeSpan).find("a").each(function () {
+        if ($(this).text().replace(/^\s+|\s+$/g, '') === text) {
+          hasLink = true;
+        }
+      });
+
+      if (! hasLink) {
+        console.log("No link for: " + text);
+      }
+    });
+  });
 };

@@ -1,12 +1,11 @@
 Package.describe({
   summary: "Utility functions for tests",
-  internal: true
+  version: '1.0.2'
 });
 
 Package.on_use(function (api) {
-  api.use(['underscore', 'deps', 'ejson', 'tinytest', 'random',
-          'domutils']);
-  api.use(['spark', 'jquery'], 'client');
+  api.use(['underscore', 'tracker', 'ejson', 'tinytest', 'random']);
+  api.use(['jquery'], 'client');
 
   // XXX for connection.js. Not sure this really belongs in
   // test-helpers. It probably would be better off in livedata. But it's
@@ -14,26 +13,26 @@ Package.on_use(function (api) {
   // other package tests and not included in the non-test bundle. One
   // idea would be to make a new separate package 'ddp-test-helpers' or
   // the like.
-  api.use('livedata');
+  api.use('ddp');
 
 
   api.export([
-    'pollUntil', 'WrappedFrag', 'try_all_permutations',
-    'SeededRandom', 'ReactiveVar', 'OnscreenDiv', 'clickElement', 'blurElement',
+    'pollUntil', 'try_all_permutations',
+    'SeededRandom', 'clickElement', 'blurElement',
     'focusElement', 'simulateEvent', 'getStyleProperty', 'canonicalizeHtml',
+    'renderToDiv',
     'withCallbackLogger', 'testAsyncMulti', 'simplePoll',
-    'makeTestConnection'], {testOnly: true});
+    'makeTestConnection', 'DomUtils'], {testOnly: true});
 
   api.add_files('try_all_permutations.js');
   api.add_files('async_multi.js');
   api.add_files('event_simulation.js');
   api.add_files('seeded_random.js');
   api.add_files('canonicalize_html.js');
-  api.add_files('onscreendiv.js');
-  api.add_files('wrappedfrag.js');
+  api.add_files('render_div.js');
   api.add_files('current_style.js');
-  api.add_files('reactivevar.js');
   api.add_files('callback_logger.js');
+  api.add_files('domutils.js', 'client');
   api.add_files('connection.js', 'server');
 });
 

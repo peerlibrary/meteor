@@ -1,13 +1,13 @@
 ////////// Shared code (client and server) //////////
 
-Games = new Meteor.Collection('games');
+Games = new Mongo.Collection('games');
 // { board: ['A','I',...], clock: 60,
 //   players: [{player_id, name}], winners: [player_id] }
 
-Words = new Meteor.Collection('words');
+Words = new Mongo.Collection('words');
 // {player_id: 10, game_id: 123, word: 'hello', state: 'good', score: 4}
 
-Players = new Meteor.Collection('players');
+Players = new Mongo.Collection('players');
 // {name: 'matt', game_id: 123}
 
 // 6 faces per die, 16 dice.  Q really means Qu.
@@ -82,7 +82,7 @@ paths_for_word = function (board, word) {
 
     for (var i = 0; i < positions_to_try.length; i++) {
       var pos = positions_to_try[i];
-      if (board[pos] === word[0] && path.indexOf(pos) === -1)
+      if (board[pos] === word[0] && _.indexOf(path, pos) === -1)
         check_path(word.slice(1),      // cdr of word
                    path.concat([pos]), // append matching loc to path
                    ADJACENCIES[pos]);  // only look at surrounding tiles

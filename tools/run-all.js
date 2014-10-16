@@ -1,41 +1,64 @@
 var _ = require('underscore');
 var Future = require('fibers/future');
-var Fiber = require('fibers');
-var files = require('./files.js');
-var inFiber = require('./fiber-helpers.js').inFiber;
-var release = require('./release.js');
 
-var runLog = require('./run-log.js').runLog;
+var files = require('./files.js');
+var release = require('./release.js');
+var buildmessage = require('./buildmessage.js');
+var fiberHelpers = require('./fiber-helpers.js');
+var runLog = require('./run-log.js');
+
+var Console = require('./console.js').Console;
+
 var Proxy = require('./run-proxy.js').Proxy;
+var Selenium = require('./run-selenium.js').Selenium;
+var HttpProxy = require('./run-httpproxy.js').HttpProxy;
 var AppRunner = require('./run-app.js').AppRunner;
 var MongoRunner = require('./run-mongo.js').MongoRunner;
 var Updater = require('./run-updater.js').Updater;
 
-// options: port, buildOptions, settingsFile, banner, program,
-// onRunEnd, onFailure, watchForChanges, quiet, rootUrl, mongoUrl,
-// oplogUrl, disableOplog, appDirForVersionCheck
+// options: proxyPort, proxyHost, appPort, appHost, buildOptions,
+// settingsFile, banner, program, onRunEnd, onFailure, watchForChanges,
+// quiet, rootUrl, mongoUrl, oplogUrl, mobileServerUrl, disableOplog,
+// appDirForVersionCheck
 var Runner = function (appDir, options) {
   var self = this;
   self.appDir = appDir;
 
-  if (! _.has(options, 'port'))
-    throw new Error("no port?");
+  if (! _.has(options, 'proxyPort'))
+    throw new Error("no proxyPort?");
 
-  var listenPort = options.port;
-  var mongoPort = listenPort + 1;
+  var listenPort = options.proxyPort;
+  var mongoPort = parseInt(listenPort) + 1;
   self.specifiedAppPort = options.appPort;
   self.regenerateAppPort();
 
   self.stopped = false;
   self.quiet = options.quiet;
   self.banner = options.banner || files.prettyPath(self.appDir);
-  self.rootUrl = options.rootUrl || ('http://localhost:' + listenPort + '/');
+  if (options.rootUrl) {
+    self.rootUrl = options.rootUrl;
+  } else if (options.proxyHost) {
+    self.rootUrl = 'http://' + options.proxyHost + ':' + listenPort + '/';
+  } else {
+    self.rootUrl = 'http://localhost:' + listenPort + '/';
+  }
+
+  self.extraRunners = options.extraRunners;
 
   self.proxy = new Proxy({
     listenPort: listenPort,
+    listenHost: options.proxyHost,
     proxyToPort: self.appPort,
+    proxyToHost: options.appHost,
     onFailure: options.onFailure
   });
+
+  self.httpProxy = null;
+  if (options.httpProxyPort) {
+    self.httpProxy = new HttpProxy({
+      listenPort: options.httpProxyPort
+    });
+  }
 
   self.mongoRunner = null;
   var mongoUrl, oplogUrl;
@@ -46,12 +69,14 @@ var Runner = function (appDir, options) {
     self.mongoRunner = new MongoRunner({
       appDir: self.appDir,
       port: mongoPort,
-      onFailure: options.onFailure
+      onFailure: options.onFailure,
+      // For testing mongod failover, run with 3 mongod if the env var is
+      // set. Note that data is not preserved from one run to the next.
+      multiple: !!process.env.METEOR_TEST_MULTIPLE_MONGOD_REPLSET
     });
 
-    mongoUrl = "mongodb://127.0.0.1:" + mongoPort + "/meteor";
-    oplogUrl = (options.disableOplog ? null :
-                "mongodb://127.0.0.1:" + mongoPort + "/local");
+    mongoUrl = self.mongoRunner.mongoUrl();
+    oplogUrl = options.disableOplog ? null : self.mongoRunner.oplogUrl();
   }
 
   self.updater = new Updater;
@@ -59,33 +84,62 @@ var Runner = function (appDir, options) {
   self.appRunner = new AppRunner(appDir, {
     appDirForVersionCheck: options.appDirForVersionCheck,
     port: self.appPort,
+    listenHost: options.appHost,
     mongoUrl: mongoUrl,
     oplogUrl: oplogUrl,
+    mobileServerUrl: options.mobileServerUrl,
     buildOptions: options.buildOptions,
     rootUrl: self.rootUrl,
     settingsFile: options.settingsFile,
     program: options.program,
+    debugPort: options.debugPort,
     proxy: self.proxy,
     onRunEnd: options.onRunEnd,
     watchForChanges: options.watchForChanges,
-    noRestartBanner: self.quiet
+    noRestartBanner: self.quiet,
+    recordPackageUsage: options.recordPackageUsage
   });
+
+  self.selenium = null;
+  if (options.selenium) {
+    self.selenium = new Selenium({
+      runner: self,
+      browser: options.seleniumBrowser
+    });
+  }
 };
 
 _.extend(Runner.prototype, {
   // XXX leave a pidfile and check if we are already running
   start: function () {
     var self = this;
+
+    // XXX: Include all runners, and merge parallel-launch patch
+    var allRunners = [ ] ;
+    allRunners = allRunners.concat(self.extraRunners);
+    _.each(allRunners, function (runner) {
+      if (!runner) return;
+      runner.prestart && runner.prestart();
+    });
+
     self.proxy.start();
 
     // print the banner only once we've successfully bound the port
-    if (! self.quiet & ! self.stopped) {
+    if (! self.quiet && ! self.stopped) {
       runLog.log("[[[[[ " + self.banner + " ]]]]]\n");
       runLog.log("=> Started proxy.");
     }
 
     if (! self.stopped) {
       self.updater.start();
+    }
+
+    // print the banner only once we've successfully bound the port
+    if (! self.stopped && self.httpProxy) {
+      self.httpProxy.start();
+      if (! self.quiet) {
+        runLog.log("=> Started http proxy.");
+      }
     }
 
     if (! self.stopped && self.mongoRunner) {
@@ -107,16 +161,19 @@ _.extend(Runner.prototype, {
       // but all of the ones I tried look terrible in the terminal.
       if (! self.quiet) {
         var animationFrame = 0;
-        var printUpdate = function () {
-          runLog.logTemporary("=> Starting MongoDB... " +
-                              spinner[animationFrame]);
+        var printUpdate = fiberHelpers.bindEnvironment(function () {
+          //runLog.logTemporary("=> Starting MongoDB... " +
+          //                    spinner[animationFrame]);
+          buildmessage.nudge();
           animationFrame = (animationFrame + 1) % spinner.length;
-        };
+        });
         printUpdate();
         var mongoProgressTimer = setInterval(printUpdate, 200);
       }
 
-      self.mongoRunner.start();
+      buildmessage.enterJob({ title: 'Starting MongoDB' }, function () {
+        self.mongoRunner.start();
+      });
 
       if (! self.quiet) {
         clearInterval(mongoProgressTimer);
@@ -124,6 +181,17 @@ _.extend(Runner.prototype, {
           runLog.log("=> Started MongoDB.");
       }
     }
+
+    _.forEach(self.extraRunners, function (extraRunner) {
+      if (! self.stopped) {
+        var title = extraRunner.title;
+        if (! self.quiet)
+          runLog.logTemporary("=> Starting " + title + "...");
+        extraRunner.start();
+        if (! self.quiet && ! self.stopped)
+          runLog.log("=> Started " + title + ".");
+      }
+    });
 
     if (! self.stopped) {
       if (! self.quiet)
@@ -135,6 +203,14 @@ _.extend(Runner.prototype, {
 
     if (! self.stopped && ! self.quiet)
       runLog.log("\n=> App running at: " + self.rootUrl);
+
+    if (self.selenium && ! self.stopped) {
+      if (! self.quiet)
+        runLog.logTemporary("=> Starting Selenium...");
+      self.selenium.start();
+      if (! self.quiet && ! self.stopped)
+        runLog.log("=> Started Selenium.");
+    }
 
     // XXX It'd be nice to (cosmetically) handle failure better. Right
     // now we overwrite the "starting foo..." message with the
@@ -150,9 +226,14 @@ _.extend(Runner.prototype, {
 
     self.stopped = true;
     self.proxy.stop();
+    self.httpProxy && self.httpProxy.stop();
     self.updater.stop();
     self.mongoRunner && self.mongoRunner.stop();
+    _.forEach(self.extraRunners, function (extraRunner) {
+      extraRunner.stop();
+    });
     self.appRunner.stop();
+    self.selenium && self.selenium.stop();
     // XXX does calling this 'finish' still make sense now that runLog is a
     // singleton?
     runLog.finish();
@@ -199,7 +280,7 @@ _.extend(Runner.prototype, {
 //
 // Options:
 //
-// - port: the port to connect to to access the application (we will
+// - proxyPort: the port to connect to to access the application (we will
 //   run a proxy here that proxies to the actual app process). required
 // - buildOptions: 'buildOptions' argument to bundler.bundle()
 // - settingsFile: path to file containing deploy-time settings
@@ -220,6 +301,9 @@ _.extend(Runner.prototype, {
 //   right release of Meteor, check against this app rather than
 //   appDir. Useful when you have autogenerated a test harness app
 //   based on some other app.
+// - recordPackageUsage: (default true) if set to false, don't send
+//   information about packages used by this app to the package stats
+//   server.
 exports.run = function (appDir, options) {
   var runOptions = _.clone(options);
   var once = runOptions.once;
@@ -239,11 +323,15 @@ exports.run = function (appDir, options) {
     },
     onRunEnd: function (result) {
       if (once ||
+          result.outcome === "conflicting-versions" ||
           result.outcome === "wrong-release" ||
           (result.outcome === "terminated" &&
            result.signal === undefined && result.code === undefined)) {
-        runner.stop();
-        fut.isResolved() || fut['return'](result);
+        // Allow run() to continue (and call runner.stop()) only once the
+        // AppRunner has processed our "return false"; otherwise we deadlock.
+        process.nextTick(function () {
+          fut.isResolved() || fut['return'](result);
+        });
         return false;  // stop restarting
       }
       runner.regenerateAppPort();
@@ -255,8 +343,18 @@ exports.run = function (appDir, options) {
 
   var runner = new Runner(appDir, runOptions);
   runner.start();
+  Console.enableProgressBar(false);
   var result = fut.wait();
   runner.stop();
+
+  if (result.outcome === "conflicting-versions") {
+    process.stderr.write(
+"The constraint solver could not find a set of package versions to use that would\n" +
+"satisfy the constraints of .meteor/versions and .meteor/packages. This could be\n" +
+"caused by conflicts in .meteor/versions, conflicts in .meteor/packages, and/or\n" +
+"inconsistent changes to the dependencies in local packages.");
+    return 254;
+  }
 
   if (result.outcome === "wrong-release") {
     if (once)
@@ -275,7 +373,7 @@ exports.run = function (appDir, options) {
     process.stderr.write(
 "Your app has been updated to Meteor " + to + " from " + "Meteor " + from +
 ".\n" +
-"Restart meteor to use the new release.");
+"Restart meteor to use the new release.\n");
     return 254;
   }
 

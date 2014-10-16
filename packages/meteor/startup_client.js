@@ -1,8 +1,18 @@
 var queue = [];
-var loaded = document.readyState === "loaded" ||
-  document.readyState == "complete";
+var loaded = !Meteor.isCordova &&
+  (document.readyState === "loaded" || document.readyState == "complete");
 
+var awaitingEventsCount = 1;
 var ready = function() {
+  awaitingEventsCount--;
+  if (awaitingEventsCount > 0)
+    return;
+
+  // XXX hide the splash screen if such exists, only on mobile
+  if (Meteor.isCordova) {
+    navigator.splashscreen && navigator.splashscreen.hide();
+  }
+
   loaded = true;
   while (queue.length)
     (queue.shift())();
@@ -10,6 +20,12 @@ var ready = function() {
 
 if (document.addEventListener) {
   document.addEventListener('DOMContentLoaded', ready, false);
+
+  if (Meteor.isCordova) {
+    awaitingEventsCount++;
+    document.addEventListener('deviceready', ready, false);
+  }
+
   window.addEventListener('load', ready, false);
 } else {
   document.attachEvent('onreadystatechange', function () {
@@ -19,6 +35,11 @@ if (document.addEventListener) {
   window.attachEvent('load', ready);
 }
 
+/**
+ * @summary Run code when a client or a server starts.
+ * @locus Anywhere
+ * @param {Function} func A function to run on startup.
+ */
 Meteor.startup = function (cb) {
   var doScroll = !document.addEventListener &&
     document.documentElement.doScroll;

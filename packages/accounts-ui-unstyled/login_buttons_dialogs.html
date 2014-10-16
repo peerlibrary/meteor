@@ -1,5 +1,6 @@
 <body>
   {{> _resetPasswordDialog}}
+  {{> _justResetPasswordDialog}}
   {{> _enrollAccountDialog}}
   {{> _justVerifiedEmailDialog}}
   {{> _configureLoginServiceDialog}}
@@ -32,6 +33,16 @@
   {{/if}}
 </template>
 
+<template name="_justResetPasswordDialog">
+  {{#if visible}}
+    <div class="accounts-dialog accounts-centered-dialog">
+      Password reset.
+      You are now logged in as {{displayName}}.
+      <div class="login-button" id="just-verified-dismiss-button">Dismiss</div>
+    </div>
+  {{/if}}
+</template>
+
 <template name="_enrollAccountDialog">
   {{#if inEnrollAccountFlow}}
     <div class="hide-background"></div>
@@ -59,7 +70,8 @@
 <template name="_justVerifiedEmailDialog">
   {{#if visible}}
     <div class="accounts-dialog accounts-centered-dialog">
-      Email verified
+      Email verified.
+      You are now logged in as {{displayName}}.
       <div class="login-button" id="just-verified-dismiss-button">Dismiss</div>
     </div>
   {{/if}}
@@ -68,7 +80,7 @@
 <template name="_configureLoginServiceDialog">
   {{#if visible}}
     <div id="configure-login-service-dialog" class="accounts-dialog accounts-centered-dialog">
-      {{{configurationSteps}}}
+      {{> configurationSteps}}
 
       <p>
         Now, copy over some details.
@@ -91,18 +103,26 @@
           {{/each}}
         </table>
       </p>
+      <p class="new-section">
+        Choose the login style:
+      </p>
+      <p>
+        &emsp;<input id="configure-login-service-dialog-popupBasedLogin" type="radio" checked="checked" name="loginStyle" value="popup">
+        <label for="configure-login-service-dialog-popupBasedLogin">Popup-based login (recommended for most applications)</label>
+
+        <br>&emsp;<input id="configure-login-service-dialog-redirectBasedLogin" type="radio" name="loginStyle" value="redirect">
+        <label for="configure-login-service-dialog-redirectBasedLogin">Redirect-based login (special cases such as using a UIWebView)</label>
+      </p>
       <div class="new-section">
         <div class="login-button configure-login-service-dismiss-button">
           I'll do this later
         </div>
         <a class="accounts-close configure-login-service-dismiss-button">&times;</a>
 
-        {{#isolate}}
-          <div class="login-button login-button-configure {{#if saveDisabled}}login-button-disabled{{/if}}"
+        <div class="login-button login-button-configure {{#if saveDisabled}}login-button-disabled{{/if}}"
              id="configure-login-service-dialog-save-configuration">
-            Save Configuration
-          </div>
-        {{/isolate}}
+          Save Configuration
+        </div>
       </div>
     </div>
   {{/if}}
@@ -116,5 +136,3 @@
     </div>
   {{/if}}
 </template>
-
-

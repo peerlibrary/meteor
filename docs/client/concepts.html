@@ -9,10 +9,9 @@ when writing those apps.
 
 {{> whatismeteor }}
 {{> structure }}
-{{> data }}
+{{> data_ }}
 {{> reactivity }}
-{{> livehtml }}
-{{> templates }}
+{{> livehtmltemplates }}
 {{> packages_concept }}
 {{> namespacing }}
 {{> deploying }}
@@ -21,7 +20,7 @@ when writing those apps.
 
 <template name="whatismeteor">
 
-{{#better_markdown}}
+{{#markdown}}
 
 <h2 id="whatismeteor">What is Meteor?</h2>
 
@@ -30,15 +29,15 @@ Meteor is two things:
 * A _library of packages_: pre-written, self-contained modules that
 you might need in your app.<br>
 There are about a dozen core Meteor
-packages that most any app will use (for example `webapp`, which
+packages that most any app will use (for example [`webapp`](#webapp), which
 handles incoming HTTP connections, and `templating`, which lets you
 make HTML templates that automatically update live as data changes).
 Then there are optional packages like `email`, which lets your app
-send emails, or the Meteor Accounts series (`account-password`,
+send emails, or the Meteor Accounts series (`accounts-password`,
 `accounts-facebook`, `accounts-ui`, and others) which provide a
 full-featured user account system that you can drop right into your
-app. And beyond these "official" packages, there are hundreds of
-community-written packages in [Atmosphere](https://atmosphere.meteor.com/),
+app. In addition to these "core" packages, there are thousands of
+community-written packages in [Atmosphere](https://atmospherejs.com/),
 one of which might do just what you need.
 
 * A _command-line tool_ called `meteor`.<br>
@@ -59,21 +58,11 @@ sense, of course: browsers can't send email and servers can't capture
 mouse events). Our whole ecosystem has been built from the ground up
 to support this.
 
-{{#note}}
-`meteor` cannot yet fetch packages from Atmosphere. If you are using
-Atmosphere packages you should take a look at
-[Meteorite](http://oortcloud.github.io/meteorite/), a tool that will
-help you download and manage your Atmosphere packages.
-
-In Meteor 1.0, the `meteor` build tool will have full support for
-Atmosphere.
-{{/note}}
-
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
 <template name="structure">
-{{#better_markdown}}
+{{#markdown}}
 
 <h2 id="structuringyourapp">Structuring your application</h2>
 
@@ -139,11 +128,10 @@ initial page load.
 Template sections, on the other hand, are converted into JavaScript
 functions, available under the `Template` namespace.  It's
 a really convenient way to ship HTML templates to the client.
-See the [templates](#templates) section for more.
+See the [templates](#livehtmltemplates) section for more.
 
-Lastly, the Meteor server will serve any files under the `public`
-directory, just like in a Rails or Django project.  This is the place
-for images, `favicon.ico`, `robots.txt`, and anything else.
+Lastly, the Meteor server will serve any files under the `public` directory.
+This is the place for images, `favicon.ico`, `robots.txt`, and anything else.
 
 It is best to write your application in such a way that it is
 insensitive to the order in which files are loaded, for example by
@@ -167,11 +155,11 @@ application are loaded according to these rules:
 * Finally, all files that match `main.*` are moved after everything else
   (preserving their order).
 
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
-<template name="data">
-{{#better_markdown}}
+<template name="data_">
+{{#markdown}}
 
 <h2 id="dataandsecurity">Data and security</h2>
 
@@ -203,16 +191,16 @@ server patches each client's cache.
 Today most Meteor apps use MongoDB as their database because it is the
 best supported, though support for other databases is coming in the
 future. The
-[`Meteor.Collection`](http://docs.meteor.com/#meteor_collection) class
+[`Mongo.Collection`](http://docs.meteor.com/#mongo_collection) class
 is used to declare Mongo collections and to manipulate them. Thanks to
-`minimongo`, Meteor's client-side Mongo emulator, `Meteor.Collection`
+`minimongo`, Meteor's client-side Mongo emulator, `Mongo.Collection`
 can be used from both client and server code.
 
     // declare collections
     // this code should be included in both the client and the server
-    Rooms = new Meteor.Collection("rooms");
-    Messages = new Meteor.Collection("messages");
-    Parties = new Meteor.Collection("parties");
+    Rooms = new Mongo.Collection("rooms");
+    Messages = new Mongo.Collection("messages");
+    Parties = new Mongo.Collection("parties");
 
     // server: populate collections with some initial documents
     Rooms.insert({name: "Conference Room A"});
@@ -313,8 +301,7 @@ releases will include support for other databases.
 
 Meteor includes [Meteor Accounts](#accounts_api), a state-of-the-art
 authentication system. It features secure password login using the
-[Secure Remote Password
-protocol](http://en.wikipedia.org/wiki/Secure_Remote_Password_protocol),
+[bcrypt](http://en.wikipedia.org/wiki/Bcrypt) algorithm,
 and integration with external services including Facebook, GitHub,
 Google, Meetup, Twitter, and Weibo. Meteor Accounts defines a
 [`Meteor.users`](#meteor_users) collection where developers can store
@@ -335,7 +322,7 @@ to declare precise types of every variable in your app, but it's usually helpful
 to ensure that the arguments that clients are passing to your methods and
 publish functions are of the type that you expect.
 
-Meteor provides a [lightweight library](#match) for checking that arguments and
+Meteor provides a [lightweight library](#check_package) for checking that arguments and
 other values are the type you expect them to be. Simply start your functions
 with statements like `check(username, String)` or
 `check(office, {building: String, room: Number})`. The `check` call will
@@ -347,11 +334,11 @@ and publish functions validate all of their arguments. Just run
 method or publish function which skips `check`ing any of its arguments will fail
 with an exception.
 
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
 <template name="reactivity">
-{{#better_markdown}}
+{{#markdown}}
 
 <h2 id="reactivity">Reactivity</h2>
 
@@ -360,7 +347,7 @@ programming](http://en.wikipedia.org/wiki/Reactive_programming). This means that
 you can write your code in a simple imperative style, and the result will be
 automatically recalculated whenever data changes that your code depends on.
 
-    Deps.autorun(function () {
+    Tracker.autorun(function () {
       Meteor.subscribe("messages", Session.get("currentRoomId"));
     });
 
@@ -371,7 +358,7 @@ function will be automatically re-run, setting up a new subscription that
 replaces the old one.
 
 This automatic recomputation is achieved by a cooperation between
-`Session` and `Deps.autorun`.  `Deps.autorun` performs an arbitrary "reactive
+`Session` and `Tracker.autorun`.  `Tracker.autorun` performs an arbitrary "reactive
 computation" inside of which data dependencies are tracked, and it
 will re-run its function argument as necessary.  Data providers like
 `Session`, on the other hand, make note of the computation they are
@@ -387,9 +374,9 @@ error-prone logic.
 
 These Meteor functions run your code as a reactive computation:
 
-* [Templates](#templates)
-* [`Meteor.render`](#meteor_render) and [`Meteor.renderList`](#meteor_renderlist)
-* [`Deps.autorun`](#deps_autorun)
+* [Templates](#livehtmltemplates)
+* [`Tracker.autorun`](#tracker_autorun)
+* [`Blaze.render`](#blaze_render) and [`Blaze.renderWithData`](#blaze_renderwithdata)
 
 And the reactive data sources that can trigger changes are:
 
@@ -405,164 +392,118 @@ In addition, the following functions which return an object with a
 `stop` method, if called from a reactive computation, are stopped when
 the computation is rerun or stopped:
 
-* [`Deps.autorun`](#deps_autorun) (nested)
+* [`Tracker.autorun`](#tracker_autorun) (nested)
 * [`Meteor.subscribe`](#meteor_subscribe)
 * [`observe()`](#observe) and [`observeChanges()`](#observe_changes) on cursors
 
 Meteor's
-[implementation](https://github.com/meteor/meteor/blob/master/packages/deps/deps.js)
-is a package called [`Deps`](#deps) that is fairly short and straightforward.
+[implementation](https://github.com/meteor/meteor/blob/master/packages/tracker/tracker.js)
+is a package called [`Tracker`](#tracker) that is fairly short and straightforward.
 You can use it yourself to implement new reactive data sources.
 
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
-<template name="livehtml">
-{{#better_markdown}}
+<template name="livehtmltemplates">
+{{#markdown}}
 
-<h2 id="livehtml">Live HTML</h2>
+<h2 id="livehtmltemplates">Live HTML templates</h2>
 
-HTML templating is central to web applications. With Meteor's live
+HTML templating is central to web applications. With Blaze, Meteor's live
 page update technology, you can render your HTML _reactively_, meaning
 that it will update automatically to track changes in the data used to
 generate it.
 
-This optional feature works with any HTML templating library, or even
-with HTML you generate manually from JavaScript. Here's an example:
+Meteor makes it easy to use your favorite HTML templating language along with
+Meteor's live page update technology. Just write your template as you normally
+would, and Meteor will take care of making it update in realtime.
 
-    var fragment = Meteor.render(
-      function () {
-        var name = Session.get("name") || "Anonymous";
-        return "<div>Hello, " + name + "</div>";
-      });
-    document.body.appendChild(fragment);
+Meteor ships with a templating language called
+[Spacebars](https://github.com/meteor/meteor/blob/devel/packages/spacebars/README.md),
+inspired by [Handlebars](http://handlebarsjs.com/).  It shares some of the
+spirit and syntax of Handlebars, but it has been tailored to produce reactive
+Meteor templates when compiled.
 
-    Session.set("name", "Bob"); // page updates automatically!
+{{#note}}
+  Today, the only templating system that ships with Meteor is Spacebars, though
+  our community has created packages for other languages such as
+  [Jade](https://atmospherejs.com/package/jade).
+{{/note}}
 
-[`Meteor.render`](#meteor_render) takes a rendering function, that is, a
-function that returns some HTML as a string. It returns an auto-updating
-`DocumentFragment`. When there is a change to data used by the rendering
-function, it is re-run. The DOM nodes in the `DocumentFragment` then
-update themselves in-place, no matter where they were inserted on the
-page. It's completely automatic. [`Meteor.render`](#meteor_render) uses
-a [reactive computation](#reactivity) to discover what data is used by the
-rendering function.
-
-Most of the time, though, you won't call these functions directly
-&mdash; you'll just use your favorite templating package, such as
-Handlebars or Jade. The `render` and `renderList` functions are intended
-for people that are implementing new templating systems.
-
-Meteor normally batches up any needed updates and executes them only
-when your code isn't running. That way, you can be sure that the DOM
-won't change out from underneath you. Sometimes you want the opposite
-behavior. For example, if you've just inserted a record in the
-database, you might want to force the DOM to update so you can find
-the new elements using a library like jQuery. In that case, call
-[`Deps.flush`](#deps_flush) to bring the DOM up to date
-immediately.
-
-When live-updating DOM elements are taken off the screen, they are automatically
-cleaned up &mdash; their callbacks are torn down, any associated database
-queries are stopped, and they stop updating. For this reason, you never have to
-worry about the [zombie
-templates](http://lostechies.com/derickbailey/2011/09/15/zombies-run-managing-page-transitions-in-backbone-apps/)
-that plague hand-written update logic. To protect your elements from cleanup,
-just make sure that they are on-screen before your code returns to the event loop,
-or before any call you make to [`Deps.flush`](#deps_flush).
-
-Another thorny problem in hand-written applications is element
-preservation. Suppose the user is typing text into an `<input>`
-element, and then the area of the page that includes that element is
-redrawn. The user could be in for a bumpy ride, as the focus, the
-cursor position, the partially entered text, and the accented
-character input state will be lost when the `<input>` is recreated.
-
-This is another problem that Meteor solves for you. You can specify
-elements to preserve when templates are re-rendered with the
-[`preserve`](#template_preserve) directive on the template. Meteor will
-preserve these elements even when their enclosing template is
-rerendered, but will still update their children and copy over any
-attribute changes.
-
-{{/better_markdown}}
-</template>
-
-<template name="templates">
-{{#better_markdown}}
-
-<h2 id="templates">Templates</h2>
-
-Meteor makes it easy to use your favorite HTML templating language,
-such as Handlebars or Jade, along with Meteor's live page update
-technology. Just write your template as you normally would, and Meteor
-will take care of making it update in realtime.
-
-To use this feature, create a file in your project with the `.html`
+To define templates, create a file in your project with the `.html`
 extension. In the file, make a `<template>` tag and give it a
 `name` attribute. Put the template contents inside the tag. Meteor
 will precompile the template, ship it down to the client, and make it
-available as a function on the global `Template` object.
+available as on the global `Template` object.
 
-{{#note}}
-Today, the only templating system that has been packaged for Meteor is
-Handlebars. Let us know what templating systems you'd like to use with
-Meteor. Meanwhile, see the [Handlebars
-documentation](http://www.handlebarsjs.com/) and [Meteor Handlebars
-extensions](https://github.com/meteor/meteor/wiki/Handlebars).
-{{/note}}
-
-A template with a `name` of `hello` is rendered by calling the
-function `Template.hello`, passing any data for the template:
-
-    <!-- in myapp.html -->
-    <template name="hello">
-      <div class="greeting">Hello there, {{dstache}}first}} {{dstache}}last}}!</div>
-    </{{! }}template>
-
-    // in the JavaScript console
-    > Template.hello({first: "Alyssa", last: "Hacker"});
-     => "<div class="greeting">Hello there, Alyssa Hacker!</div>"
-
-This returns a string. To use the template along with the [`Live
-HTML`](#livehtml) system, and get DOM elements that update
-automatically in place, use [`Meteor.render`](#meteor_render):
-
-    Meteor.render(function () {
-      return Template.hello({first: "Alyssa", last: "Hacker"});
-    })
-      => automatically updating DOM elements
+When your app is loaded, it automatically renders the special template called
+`<body>`, which is written using the `<body>` element instead of a
+`<template>`. You insert a template inside another template by using the
+`{{dstache}}> inclusion}}` operator.
 
 The easiest way to get data into templates is by defining helper
 functions in JavaScript. Just add the helper functions directly on the
-`Template.[template name]` object. For example, in this template:
+`Template.`*templateName* object. Putting it all together:
 
+
+    <!-- in myapp.html -->
+    <body>
+      <h1>Today's weather!</h1>
+      {{dstache}}> forecast}}
+    </body>
+
+    <template name="forecast">
+      <div>It'll be {{dstache}}prediction}} tonight</div>
+    {{lt}}/template>
+
+    // in client/myapp.js: reactive helper function
+    Template.forecast.helpers({
+      prediction: function () {
+        return Session.get("weather");
+      }
+    });
+
+    // in the JavaScript console
+    > Session.set("weather", "cloudy");
+    > document.body.innerHTML
+     => "<h1>Today's weather!</h1> <div>It'll be cloudy tonight</div>"
+
+    > Session.set("weather", "cool and dry");
+    > document.body.innerHTML
+     => "<h1>Today's weather!</h1> <div>It'll be cool and dry tonight</div>"
+
+
+To iterate over an array or database cursor, use `{{dstache}}#each}}`:
+
+    <!-- in myapp.html -->
     <template name="players">
       {{dstache}}#each topScorers}}
         <div>{{dstache}}name}}</div>
       {{dstache}}/each}}
-    </{{! }}template>
+    {{lt}}/template>
 
-instead of passing in `topScorers` as data when we call the
-template function, we could define a function on `Template.players`:
-
-    Template.players.topScorers = function () {
-      return Users.find({score: {$gt: 100}}, {sort: {score: -1}});
-    };
+    // in myapp.js
+    Template.players.helpers({
+      topScorers: function () {
+        return Users.find({score: {$gt: 100}}, {sort: {score: -1}});
+      }
+    });
 
 In this case, the data is coming from a database query. When the
-database cursor is passed to `#each`, it will wire up all of the
+database cursor is passed to `{{dstache}}#each}}`, it will wire up all of the
 machinery to efficiently add and move DOM nodes as new results enter
 the query.
 
 Helpers can take arguments, and they receive the current template context data
 in `this`. Note that some block helpers change the current context (notably
-`each` and `with`):
+`{{dstache}}#each}}` and `{{dstache}}#with}}`):
 
     // in a JavaScript file
-    Template.players.leagueIs = function (league) {
-      return this.league === league;
-    };
+    Template.players.helpers({
+      leagueIs: function (league) {
+        return this.league === league;
+      }
+    });
 
     <!-- in a HTML file -->
     <template name="players">
@@ -574,20 +515,14 @@ in `this`. Note that some block helpers change the current context (notably
           <div>Senior: {{dstache}}name}}</div>
         {{dstache}}/if}}
       {{dstache}}/each}}
-    </{{! }}template>
-
-{{#note}}
-Handlebars note: `{{dstache}}#if leagueIs "junior"}}` is
-allowed because of a Meteor extension that allows nesting a helper
-in a block helper. (Both `if` and `leagueIs` are
-technically helpers, and stock Handlebars would not invoke
-`leagueIs` here.)
-{{/note}}
+    {{lt}}/template>
 
 Helpers can also be used to pass in constant data.
 
     // Works fine with {{dstache}}#each sections}}
-    Template.report.sections = ["Situation", "Complication", "Resolution"];
+    Template.report.helpers({
+      sections: ["Situation", "Complication", "Resolution"]
+    });
 
 Finally, you can use an `events` declaration on a template function to set up a
 table of event handlers. The format is documented at [Event
@@ -599,13 +534,13 @@ the data context of the element that triggered the event.
       {{dstache}}#each player}}
         {{dstache}}> playerScore}}
       {{dstache}}/each}}
-    </{{! }}template>
+    {{lt}}/template>
 
     <template name="playerScore">
       <div>{{dstache}}name}}: {{dstache}}score}}
         <span class="givePoints">Give points</span>
       </div>
-    </{{! }}template>
+    {{lt}}/template>
 
     <!-- myapp.js -->
     Template.playerScore.events({
@@ -614,35 +549,14 @@ the data context of the element that triggered the event.
       }
     });
 
-Putting it all together, here's an example of how you can inject
-arbitrary data into your templates, and have them update automatically
-whenever that data changes. See [Live HTML](#livehtml) for further
-discussion.
+For more details about Spacebars, read [the Spacebars
+README](https://github.com/meteor/meteor/blob/devel/packages/spacebars/README.md).
 
-    <!-- in myapp.html -->
-    <template name="forecast">
-      <div>It'll be {{dstache}}prediction}} tonight</div>
-    </{{! }}template>
-
-    <!-- in myapp.js -->
-    // JavaScript: reactive helper function
-    Template.forecast.prediction = function () {
-      return Session.get("weather");
-    };
-
-    <!-- in the console -->
-    > Session.set("weather", "cloudy");
-    > document.body.appendChild(Meteor.render(Template.forecast));
-    In DOM:  <div>It'll be cloudy tonight</div>
-
-    > Session.set("weather", "cool and dry");
-    In DOM:  <div>It'll be cool and dry tonight</div>
-
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
 <template name="packages_concept">
-{{#better_markdown}}
+{{#markdown}}
 
   <h2 id="usingpackages">Using packages</h2>
 
@@ -653,38 +567,42 @@ the browser and on the server, and packages can contain plugins that
 extend the build process, such as `coffeescript` ([CoffeeScript](http://coffeescript.org)
 compilation) or `templating` (compiling HTML templates).
 
-You can see a list of available packages
-with [`meteor list`](#meteorlist), add packages to your project
-with [`meteor add`](#meteoradd), and remove them
-with [`meteor remove`](#meteorremove).
+Anyone can publish a Meteor package, and thousands of community-written packages
+have been published to date. The easiest way to browse these packages
+is <a href="http://www.atmospherejs.com">Atmosphere</a>, by Percolate Studio. You can
+also use [`meteor search`](#meteorsearch) and [`meteor show`](#meteorshow) commands.
+
+You can add packages to your project with [`meteor add`](#meteoradd) and remove
+them with [`meteor remove`](#meteorremove).
+Additionally, [`meteor list`](#meteorlist) will tell you what
+packages your project is using, and [`meteor update`](#meteorupdate)
+will help keep them up to date.
 
 By default all apps include the `standard-app-packages` package. This
 automatically pulls in the packages that make up the core Meteor
-stack. To keep things simple, these core packages are also hidden in
-the output for `meteor list`, but you can read the
-[source code of `standard-app-packages`](https://github.com/meteor/meteor/blob/master/packages/standard-app-packages/package.js)
-to see what they are (as Meteor is pre-1.0, they may change from release to
-release). If you want to build your own custom stack, just remove
+stack. If you want to build your own custom stack, just remove
 `standard-app-packages` from your app and add back in whichever of the standard
 packages you want to keep.
 
-In addition to the packages in the official Meteor release being used
-by your app, `meteor list` and `meteor add` also search the `packages`
-directory at the top of your app. If you've downloaded an unofficial
-package from Atmosphere you should unpack it into that directory (the
-unofficial [Meteorite](http://oortcloud.github.io/meteorite/) tool
-streamlines this process). You can also use the `packages` directory
-to break your app into subpackages for your convenience &mdash; if you
-are willing to brave the fact that the Meteor package format is not
-documented yet and will change significantly before Meteor 1.0. See
-[Writing Packages](#writingpackages).
+Meteor uses a single-loading packaging system, meaning that it loads just one
+version of every package. Before adding or upgrading to a particular version of
+a package, Meteor uses a constraint solver to check if doing so will cause
+other packages to break. By default, Meteor will choose conservatively. When
+adding transitive dependencies (packages that other packages, but not the
+application itself) depend on, Meteor will try to choose the earlier version.
 
-{{/better_markdown}}
+In addition to the packages in the official Meteor release being used by your
+app, `meteor list` and `meteor add` also search the `packages` directory at the
+top of your app. You can also use the `packages` directory to break your app
+into subpackages for your convenience, or to test packages that you might want
+to publish. See [Writing Packages](#writingpackages).
+
+{{/markdown}}
 </template>
 
 
 <template name="namespacing">
-{{#better_markdown}}
+{{#markdown}}
 
   <h2 id="namespacing">Namespacing</h2>
 
@@ -773,12 +691,12 @@ certainly shouldn't depend on this quirk, and in the future Meteor may
 check for it and throw an error if you do.
 {{/note}}
 
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
 
 <template name="deploying">
-{{#better_markdown}}
+{{#markdown}}
 
 <h2 id="deploying">Deploying</h2>
 
@@ -803,13 +721,13 @@ update, Meteor will preserve the existing data and just refresh the
 code.
 
 You can also deploy to your own domain.  Just set up the hostname you
-want to use as a CNAME to `origin.meteor.com`,
-then deploy to that name.
+want to use as a CNAME to `origin.meteor.com`, then deploy to that name.
 
     $ meteor deploy www.myapp.com
 
 We provide this as a free service so you can try Meteor.  It is also
-helpful for quickly putting up internal betas, demos, and so on.
+helpful for quickly putting up internal betas, demos, and so on. For
+more information, see [meteor deploy](#meteordeploy).
 
 <h3 class="nosection">Running on your own infrastructure</h3>
 
@@ -823,131 +741,89 @@ To get started, run
 This command will generate a fully-contained Node.js application in the form of
 a tarball.  To run this application, you need to provide Node.js 0.10 and a
 MongoDB server.  (The current release of Meteor has been tested with Node
-0.10.25; older versions contain a serious bug that can cause production servers
+0.10.29; older versions contain a serious bug that can cause production servers
 to stall.) You can then run the application by invoking node, specifying the
 HTTP port for the application to listen on, and the MongoDB endpoint.  If
 you don't already have a MongoDB server, we can recommend our friends at
-[MongoHQ](http://mongohq.com).
+[Compose](http://compose.io).
 
-    $ PORT=3000 MONGO_URL=mongodb://localhost:27017/myapp node bundle/main.js
+    $ cd bundle
+    $ (cd programs/server && npm install)
+    $ PORT=3000 MONGO_URL=mongodb://localhost:27017/myapp node main.js
 
 Other packages may require other environment variables (for example, the `email`
 package requires a `MAIL_URL` environment variable).
 
-{{#warning}}
-For now, bundles will only run on the platform that the bundle was
-created on.  To run on a different platform, you'll need to rebuild
-the native packages included in the bundle.  To do that, make sure you
-have `npm` available, and run the following:
-
-    $ cd bundle/programs/server/node_modules
-    $ rm -r fibers
-    $ npm install fibers@1.0.1
-{{/warning}}
-
-{{/better_markdown}}
+{{/markdown}}
 </template>
 
 
 <template name="packages_writing">
-{{#better_markdown}}
+{{#markdown}}
 
   <h2 id="writingpackages">Writing packages</h2>
 
-The Meteor package format isn't officially documented and will change
-before Meteor 1.0. But that hasn't stopped people like you from
-creating hundreds of packages by reading the source code of existing
-packages and following the model. If you do decide to create your own
-packages, you will have to do some detective work, but here are some
-quick tips:
+Writing Meteor packages is easy. To initialize a meteor package, run
+`meteor create --package username:packagename`, where `username` is your Meteor
+Developer username. This will create a package from scratch and prefill the
+directory with a package.js control file and some javascript. By default, Meteor
+will take the package name from the name of the directory that contains the
+package.js file.
 
-* A package is simply a directory with a `package.js` file in it. Look in the
-  [`packages` directory of the Meteor source
-  tree](https://github.com/meteor/meteor/tree/master/packages/) for example
-  `package.js` files. The format and name of the `package.js` file will change
-  significantly before Meteor 1.0, but the functionality will be basically the
-  same even though the syntax is different, so it will be easy to port your
-  code.
+Meteor promises repeatable builds for both packages and applications. This means
+that, if you built your package on a machine, then checked the code into a
+repository and checked it out elsewhere, you should get the same result. In your
+package directory, you will find an automatically generated versions.json
+file. This file specifies the versions of all packages used to build your
+package and is part of the source. Check it into version control to ensure
+repeatable builds across machines.
 
-* Packages explicitly list all of their source files using `api.add_files`, and
-  the files are loaded exactly in the order specified. (This is different from
-  apps, where Meteor scans a directory tree to find the source files.)  Don't
-  forget to include any build plugin packages (such as `coffeescript` or, if
-  using HTML templates, `templating`) that you require.
+{{#note}}
 
-* Exporting a symbol from your package (see
-  [Namespacing](#namespacing)) is accomplished with an `api.export` call
-  from inside your `on_use` handler.
+Sometimes, packages do not just stand on their own, but function in the context
+of an app (specifically, packages in the packages directory of an app). In that
+case, the app's context will take precedence. Rather than using the
+versions.json file as a guide, we will build the package with the same
+dependencies as used by the app (we think that, in practice, it would be
+confusing to find your local packages built with different versions of
+things). However, we will still write the new versions.json file.
 
-* An esoteric point about exports: they are not lvalues. You can't set
-  an exported variable to a new value after exporting it. If you
-  export `a = {name: 'alice'}` then you can change `a.name` anytime
-  you want, but if after startup you set `a` to a whole new object
-  then the packages that import `a` won't see the change. Since your
-  exports are most always objects or functions, this is hardly ever an
-  issue.
+{{/note}}
 
-* Packages can use [npm modules](https://npmjs.org/). Use `Npm.depends` in your
-  `package.js` to list the npm modules that you need and the specific
-  versions that you want to use. Then use `Npm.require` inside your
-  package to pull in the modules when you need them. Meteor strives to
-  have 100% repeatable builds so that everyone on your team is always
-  running the same code, and that's why you must explicitly lock your
-  npm dependencies to specific versions. Behind the scenes, Meteor
-  will use `npm shrinkwrap` to also lock down the versions of the
-  transitive dependencies of all of the npm modules that you use.
+Meteor uses extended semver versioning for its packages: that means that the version
+number has three parts separated by dots: major version, minor version and patch version
+(for example: 1.2.3) with an optional pre-release version. You can read more about it on
+[semver.org](http://www.semver.org).
+Additionally, because some meteor packages wrap external libraries,
+Meteor supports the convention of using `_` to denote a wrap number.
 
-* Whenever your package changes, Meteor will rebuild it (compiling
-  non-JavaScript source files, fetching npm dependencies, constructing
-  namespace wrappers, and so on). The built package will be cached and
-  rebuilt only when a source file changes (tracked by SHA1) or when
-  other dependencies such as build plugins change. To force a rebuild
-  you can use the undocumented command `meteor rebuild-all`, but this
-  should never be necessary (if it is, please send a
-  [bug report](https://github.com/meteor/meteor/blob/devel/Contributing.md#filing-bug-reports)!).
+You can read more about [`package.js`](#packagejs) files in the API
+section.
 
-* Build plugins are created with `_transitional_registerBuildPlugin`,
-  an API that is very much in flux. See the `coffeescript` package for
-  an example. Build plugins are fully-fledged Meteor programs in their
-  own right and have their own namespace, package dependencies, source
-  files and npm requirements. The old `register_extension` API is
-  removed.
+A word on testing: since testing is an important part of the development process,
+there are two common ways to test a package:
 
-* It is possible to create weak dependencies between packages. If
-  package A has a weak dependency on package B, it means that
-  including A in an app does not force B to be included too &mdash;
-  but, if B _is_ included, say by the app developer or by another
-  package, then B will load before A. You can use this to make
-  packages that optionally integrate with or enhance other packages if
-  those packages are present. To create a weak dependency, pass
-  `{weak: true}` as the third argument to `api.use`. When you weakly
-  depend on a package you don't see its exports. You can detect if
-  the possibly-present weakly-depended-on package is there by seeing
-  if `Package.foo` exists, and get its exports from the same place.
+* Integration tests (putting a package directly into an application, and writing
+tests against the application) is the most common way to test a package. After
+creating your package, add it to your app's /packages directory and run `meteor
+add`. This will add your package to your app as a local package. You can then
+test and run your app as usual. Meteor will detect and respond to changes to
+your local package, just as it does to your app files.
 
-* It is also possible to create unordered dependencies by passing
-  `{unordered: true}`. An unordered dependency is the exact opposite
-  of a weak dependency. If A has an unordered dependency on B, then
-  including A forces B to be included as well, but doesn't require B
-  to load before A. This is occasionally useful for resolving circular
-  dependencies.
+* Unit tests are run with the command [`meteor test-packages
+package-name`](#meteortestpackages). As described in the [`package.js`](#packagejs)
+section, you can use the `package.js` file to specify where your unit tests are
+located. If you have a repository that contains only the package source, you can
+test your package by specifying the path to the package directory (which must
+contain a slash), such as `meteor test-packages ./`.
 
-* The build system also supports package implication. If package A
-  implies package B, then it means that when someone depends on
-  package A, it's as if they also depended on package B as well. In
-  particular, they get B's exports. This is done with `api.imply` and
-  can be used to create umbrella packages such as
-  `standard-app-packages` that are a shortcut for pulling in a set of
-  packages, or it can be helpful in factoring common code out of a set
-  of packages as with `accounts-base`.
+To publish a package, run [`meteor publish`](#meteorpublish) from the package
+directory.  There are some extra restrictions on published packages: they must
+contain a version (Meteor packages are versioned using
+strict <a href="http://www.semver.org">semver</a> versioning) and their names
+must be prefixed with the username of the author and a colon, like so:
+`iron:router`. This namespacing allows for more descriptive and on-topic package
+names.
 
-* The build system understands the idea of native code and has a
-  system of architecture names to ensure that packages that are
-  specific to one architecture aren't run on the wrong
-  architecture. For example, if you include an npm module that has a
-  native extension, your built Meteor package will be specific to your
-  machine architecture, but if not your built Meteor package will be
-  portable.
-
-{{/better_markdown}}
+{{/markdown}}
 </template>

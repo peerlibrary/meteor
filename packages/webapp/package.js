@@ -1,6 +1,6 @@
 Package.describe({
   summary: "Serves a Meteor app over HTTP",
-  internal: true
+  version: '1.1.3'
 });
 
 Npm.depends({connect: "2.9.0",
@@ -8,7 +8,8 @@ Npm.depends({connect: "2.9.0",
              useragent: "2.0.7"});
 
 Package.on_use(function (api) {
-  api.use(['logging', 'underscore', 'routepolicy'], 'server');
+  api.use(['logging', 'underscore', 'routepolicy', 'boilerplate-generator',
+           'spacebars', 'htmljs', 'blaze', 'webapp-hashing'], 'server');
   api.use(['underscore'], 'client');
   api.use(['application-configuration', 'follower-livedata'], {
     unordered: true
@@ -22,4 +23,9 @@ Package.on_use(function (api) {
   api.export(['WebApp'], 'client');
   api.add_files('webapp_server.js', 'server');
   api.add_files('webapp_client.js', 'client');
+});
+
+Package.on_test(function (api) {
+  api.use(['tinytest', 'webapp', 'http']);
+  api.add_files('webapp_tests.js', 'server');
 });
