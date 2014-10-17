@@ -189,7 +189,7 @@ WebApp.addHtmlAttributeHook = function (hook) {
 
 // Extra body hooks: functions to be called to determine any body content to be
 // added inside the '<body>' tag. Each function is passed a 'request' object
-// (see #BrowserIdentification) and should return a string,
+// (see #BrowserIdentification) and should return a string.
 var extraBodyHooks = [];
 var getExtraBody = function (request) {
   var bodyContent = '';
@@ -202,6 +202,24 @@ var getExtraBody = function (request) {
 };
 WebApp.addExtraBodyHook = function (hook) {
   extraBodyHooks.push(hook);
+};
+
+// Title hooks: functions to be called to determine the page title to be
+// added to the '<head>' tag. Each function is passed a 'request' object
+// (see #BrowserIdentification) and should return a string. The last hook
+// returning non-empty string sets the title.
+var titleHooks = [];
+var getTitle = function (request) {
+  var titleContent = '';
+  _.each(titleHooks || [], function (hook) {
+    var title = hook(request);
+    if (title !== null && title !== undefined && title !== '')
+      titleContent = title;
+  });
+  return titleContent;
+};
+WebApp.addTitleHook = function (hook) {
+  titleHooks.push(hook);
 };
 
 // Serve app HTML for this URL?
@@ -316,21 +334,24 @@ var getBoilerplate = function (request, arch) {
 
   var htmlAttributes = getHtmlAttributes(request);
   var extraBody = getExtraBody(request);
+  var title = getTitle(request);
 
   // The only thing that changes from request to request (for now) are
-  // the HTML attributes (used by, eg, appcache), extra body and whether
-  // inline scripts are allowed, so we can memoize based on that.
+  // the HTML attributes (used by, eg, appcache), extra body, title and
+  // whether inline scripts are allowed, so we can memoize based on that.
   var memHash = JSON.stringify({
     inlineScriptsAllowed: inlineScriptsAllowed,
     htmlAttributes: htmlAttributes,
     extraBody: extraBody,
+    title: title,
     arch: arch
   });
 
   if (! memoizedBoilerplate[memHash]) {
     memoizedBoilerplate[memHash] = boilerplateByArch[arch].toHTML({
       htmlAttributes: htmlAttributes,
-      extraBody: extraBody
+      extraBody: extraBody,
+      title: title
     });
   }
   return memoizedBoilerplate[memHash];
@@ -828,10 +849,6 @@ var runWebAppServer = function () {
       parentPid = argv[parentPidIndex + 1];
     }
     WebAppInternals.generateBoilerplate();
-
-    boilerplateHtml = boilerplateHtml.replace(
-        /##TITLE##/g,
-      __meteor_runtime_config__.TITLE ? "<title>" + __meteor_runtime_config__.TITLE + "</title>" : "");
 
     // only start listening after all the startup code has run.
     var localPort = parseInt(process.env.PORT) || 0;
